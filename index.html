@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta charset="UTF-8">
+    <title>AdsGram Reklama + Balans</title>
+
+    <!-- AdsGram SDK -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
+    <script type="module">
+        import { db, doc, getDoc, setDoc } from "./firebase.js";
+
+        // USER ID yaratish
+        let userId = localStorage.getItem("userId");
+        if (!userId) {
+            userId = "user_" + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("userId", userId);
+        }
+
+        // Balansni yuklash
+        async function loadBalance() {
+            const ref = doc(db, "users", userId);
+            const snap = await getDoc(ref);
+
+            if (snap.exists()) {
+                document.getElementById("balance").innerText = snap.data().balance.toFixed(2);
+            } else {
+                await setDoc(ref, { balance: 0 });
+                document.getElementById("balance").innerText = "0.00";
+            }
+        }
+
+        // Balans +0.0002
+        async function addBalance() {
+            const ref = doc(db, "users", userId);
+            const snap = await getDoc(ref);
+
+            let current = snap.exists() ? snap.data().balance : 0;
+            let updated = current + 0.0002;
+
+            await setDoc(ref, { balance: updated }, { merge: true });
+
+            document.getElementById("balance").innerText = updated.toFixed(2);
+        }
+
+        window.addEventListener("DOMContentLoaded", loadBalance);
+
+        // Reklama
+        let AdController;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            AdController = window.Adsgram.init({
+                blockId: "int-17980"
+            });
+        });
+
+        // Reklama tugma funksiyasi
+        window.showAd = function () {
+            if (!AdController) {
+                alert("Reklama hali yuklanmadi!");
+                return;
+            }
+
+            AdController.show()
+            .then(() => {
+                addBalance();
+                alert("Reklama ko‘rildi! Balansga +0.0002 qo‘shildi");
+            })
+            .catch(() => {
+                alert("Reklama ochilmadi.");
+            });
+        };
+    </script>
+
+    <style>
+        button{
+            padding: 12px 18px;
+            background: #0088ff;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            margin: 5px;
+        }
+        #balance{
+            font-size: 22px;
+            color: green;
+            margin-bottom: 20px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Balans: <span id="balance">0.0000</span> $</h2>
+
+<button onclick="showAd()">Reklamani ko‘rsat</button>
+
+<!-- Withdraw tugmasi -->
+<button id="withdraw_btn">📤 Pul yechish</button>
+
+<script type="module">
+import { db, doc, getDoc } from "./firebase.js";
+
+let userId = localStorage.getItem("userId");
+
+document.getElementById("withdraw_btn").addEventListener("click", async () => {
+    const ref = doc(db, "users", userId);
+    const snap = await getDoc(ref);
+    const balance = snap.exists() ? snap.data().balance : 0;
+
+    if (balance < 0.1) {
+        alert("Balansingiz yetarli emas! Minimal balans 0.10$");
+        return;
+    }
+
+    // Balans yetarli bo‘lsa → withdraw.html ga o‘tish
+    window.location.href = "withdraw.html";
+});
+</script>
