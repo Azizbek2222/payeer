@@ -45,13 +45,13 @@
 </head>
 <body>
 <div class="withdraw-box">
-    <div class="box-title">💸 Pul Yechib Olish</div>
+    <div class="box-title">💸 Withdraw Money</div>
     <form id="withdrawForm">
-        <input type="text" id="payeer" placeholder="Payeer Hamyon Raqamingiz (Pxxxxxxx)" required><br>
-        <input type="number" id="amount" placeholder="Miqdor (₽)" min="1" step="0.01" required><br>
-        <button type="submit" class="submit-btn">So‘rov Yuborish</button>
+        <input type="text" id="payeer" placeholder="Your Payeer Wallet Number (Pxxxxxxx)" required><br>
+        <input type="number" id="amount" placeholder="Quantity (₽)" min="1" step="0.01" required><br>
+        <button type="submit" class="submit-btn">Send a request</button>
     </form>
-    <button class="back-btn" onclick="location.href='index.html'">Ortga Qaytish</button>
+    <button class="back-btn" onclick="location.href='index.html'">Back</button>
 </div>
 
 <script type="module">
@@ -88,7 +88,7 @@
         const amount = parseFloat(document.getElementById("amount").value);
         
         if (payeer === "" || amount <= 0 || isNaN(amount)) {
-            alert("Iltimos, Payeer raqami va to'g'ri miqdorni kiriting.");
+            alert("Please enter your Payeer number and the correct amount.");
             return;
         }
 
@@ -99,7 +99,7 @@
                 const currentBalance = userData.balance || 0.00;
 
                 if (amount > currentBalance) {
-                    alert("Balansingizda yetarli mablag' mavjud emas. Balansingiz: " + currentBalance.toFixed(2) + " ₽");
+                    alert("There are not enough funds in your balance. Your balance: " + currentBalance.toFixed(2) + " ₽");
                     return;
                 }
                 
