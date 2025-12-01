@@ -86,7 +86,7 @@
         transition: background 0.3s;
     }
     
-    /* === YANGI: Referral Tugmasi Stili === */
+    /* === Referral Tugmasi Stili === */
     .referral-btn {
         padding: 8px 15px;
         background: #8A2BE2; /* Binafsha rang */
@@ -95,6 +95,19 @@
         border-radius: 8px;
         font-size: 14px;
         box-shadow: 0 2px 5px rgba(138, 43, 226, 0.4);
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    /* === YANGI: Reyting Tugmasi Stili === */
+    .leaderboard-btn {
+        padding: 8px 15px;
+        background: #FFD700; /* Oltin rang */
+        color: #333; /* To'q rangli yozuv */
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(255, 215, 0, 0.6);
         cursor: pointer;
         transition: background 0.3s;
     }
@@ -249,8 +262,9 @@
         <button class="withdraw-btn" onclick="location.href='withdraw.html'">Withdraw</button>
         <button class="tasks-btn" onclick="location.href='task.html'">Tasks</button>
         <button class="referral-btn" onclick="location.href='referal.html'">Referral</button>
+        <button class="leaderboard-btn" onclick="location.href='reyting.html'">Reyting</button>
     </div>
-    </div>
+</div>
 
 <div class="main-content">
     <div class="rocket-container">
@@ -325,7 +339,7 @@ const DECREMENT_RATE = 100 / TIMER_SECONDS;
 
 let AdController = null; 
 let miningInterval = null; 
-let referrerId = null; // YANGI: Referrer ID ni global qilish
+let referrerId = null; 
 
 // === ADSGRAM/ADSONAR Funksiyalari (Refuel va Shield uchun) ===
 
@@ -582,102 +596,72 @@ function toggleRocketAnimation(shouldAnimate) {
     }
 }
 
+// ... davom etadi. (Qolgan JavaScript kodi o'zgartirilmasdan qoladi)
+
+// --- Yuqoridagi kod qismining davomi ---
 function stopMining() {
     if(miningInterval) clearInterval(miningInterval);
     miningInterval = null; // Tozalash
     adBtn.disabled = false;
     adBtn.innerText = "launch rocket miner";
-    toggleRocketAnimation(false);
-    
-    // Mining tugagani haqida Firebase'ga xabar berish
-    update(ref(db, "users/" + deviceId), { isMining: false });
+    toggleRocketAnimation(false); // Raekatani to'xtatish
 }
 
-function startTimer(){
-    if (miningInterval) clearInterval(miningInterval); 
-    
+function startTimer() {
     adBtn.disabled = true;
-    toggleRocketAnimation(true); 
+    toggleRocketAnimation(true); // Raekatani animatsiya qilish
     
-    // Taymer boshlanganda lastLaunchTime ni hozirgi vaqtga o'rnatish
-    update(ref(db, "users/" + deviceId), { 
-        lastLaunchTime: Date.now(),
-        isMining: true 
-    });
-
-    miningInterval = setInterval(()=>{
-        // 1. Tugmadagi vaqtni yangilash
-        let m=Math.floor(remainingTime/60);
-        let s=remainingTime%60;
-        adBtn.innerText=`${m}:${s<10?"0"+s:s}`;
+    if(miningInterval) clearInterval(miningInterval); // Oldingisini tozalash
+    
+    // Mining Interval
+    miningInterval = setInterval(() => {
         
-        if(remainingTime > 0){
-            // 2. Balans va foizlarni yangilash (Har soniyada)
-            const earnedThisSecond = REWARD_PER_SECOND; // Har soniyada olinadigan asosiy foyda
-            balance += earnedThisSecond;
-            document.getElementById("balance").innerText = balance.toFixed(2)+" ₽";
-            
-            // === REFERRAL BONUS MANTIQI (Har soniyada) ===
-            if (referrerId) { 
-                const referrerBonus = earnedThisSecond * 0.02; // 2% bonus
-                
-                // Taklifchining balansini Firebase'da yangilash (qo'shimcha funksiya orqali)
-                // Ma'lumotlar bazasini bir vaqtning o'zida bir nechta joydan yangilash uchun "Transaction" dan foydalanish tavsiya etiladi.
-                // Lekin soddalik uchun get/update ishlatamiz.
-                get(child(dbRef, "users/" + referrerId)).then(snapshot => {
-                    if (snapshot.exists()) {
-                        const refData = snapshot.val();
-                        const newRefBalance = (refData.balance || 0) + referrerBonus;
-                        const newRefBonus = (refData.referral_bonus || 0) + referrerBonus;
-                        
-                        update(ref(db, "users/" + referrerId), { 
-                            balance: newRefBalance,
-                            referral_bonus: newRefBonus
-                        });
-                    }
-                }).catch(error => {
-                    console.error("Referrer balansini yangilashda xatolik:", error);
-                });
-            }
-            // ===================================
-
-            // Foizlarni kamaytirish
-            fuel = Math.max(0, fuel - DECREMENT_RATE);
-            shield = Math.max(0, shield - DECREMENT_RATE);
-            
-            // 3. Agar resurslar 0% ga tushib qolgan bo'lsa, darhol to'xtatish
-            if (fuel <= 0 || shield <= 0) {
-                 stopMining();
-                 fuel = 0;
-                 shield = 0;
-                 updateStatus();
-                 remainingTime = 0;
-                 // Resurs tugaganligi sababli, yakuniy holatni saqlash
-                 update(ref(db, "users/" + deviceId), { isMining: false, fuel: 0, shield: 0, balance: balance });
-                 return;
-            }
-
-            updateStatus();
-            
-            // 4. Firebase'da ma'lumotlarni saqlash (Har soniyada)
-            update(ref(db, "users/" + deviceId), { 
-                balance: balance, 
-                fuel: fuel, 
-                shield: shield,
-                lastLaunchTime: Date.now() 
-            });
-        }
+        remainingTime--; 
         
-        if(remainingTime<=0){
+        // 1. Foizlarni yangilash
+        fuel = Math.max(0, fuel - DECREMENT_RATE);
+        shield = Math.max(0, shield - DECREMENT_RATE);
+        
+        updateStatus(); // Foizlarni ekranda yangilash
+
+        // 2. Balansni yangilash
+        balance += REWARD_PER_SECOND;
+        document.getElementById("balance").innerText = balance.toFixed(2)+" ₽";
+        
+        // 3. Yakuniy tekshirish
+        if(remainingTime <= 0 || fuel <= 0 || shield <= 0){
             stopMining();
+
+            // Balans va Foizlarni aniq 0 ga tushirish
             fuel = 0;
             shield = 0;
             updateStatus();
-            // Taymer tugaganda ham yakuniy holatni saqlash
-            update(ref(db, "users/" + deviceId), { isMining: false, fuel: 0, shield: 0, balance: balance });
+            
+            // Firebase'ga yakuniy natijalarni yozish
+            update(ref(db, "users/" + deviceId), { 
+                balance: balance, 
+                fuel: 0, 
+                shield: 0, 
+                isMining: false,
+                lastLaunchTime: Date.now() // Tugash vaqti (oxirgi saqlash uchun)
+            });
+
+            Telegram.WebApp.showAlert(`Mining yakunlandi! Siz ${MINING_REWARD.toFixed(2)} ₽ ishladiniz.`);
+
+        } else {
+            // Har 10 soniyada Firebase'ga yangilanishlarni yozish (yoki har 5 marta)
+            if (remainingTime % 5 === 0) { 
+                update(ref(db, "users/" + deviceId), { 
+                    balance: balance, 
+                    fuel: fuel, 
+                    shield: shield,
+                    lastLaunchTime: Date.now() 
+                });
+            }
         }
-        remainingTime--;
-    },1000); 
+        
+    }, 1000); // Har 1 sekundda ishlashi
+
 }
 </script>
 

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <title>Reyting - Rocket Mining</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4e9fff, #6ac9ff); /* index.html dizayni bilan mos */
+            padding: 10px;
+            margin: 0;
+            min-height: 100vh;
+            color: #fff;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 450px;
+            margin: 10px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h2 {
+            color: #FFD700; /* Oltin rang */
+            margin-bottom: 20px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .timer-box {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            padding: 15px 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .timer-title {
+            font-size: 14px;
+            color: #E0E0E0;
+            margin-bottom: 5px;
+        }
+        
+        #countdown-timer {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00c16e; /* Yashil rang */
+            text-shadow: 0 0 5px rgba(0, 193, 110, 0.5);
+        }
+
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        .ranking-item {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            border-left: 5px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .ranking-item.top-3 {
+            border-left: 5px solid #FFD700; /* Oltin chegara */
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .ranking-item.you {
+            background: #8A2BE2; /* Binafsha rang */
+            border-left: 5px solid #fff;
+            font-weight: bold;
+            transform: scale(1.02);
+        }
+
+        .rank-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            width: 30px;
+            text-align: center;
+        }
+
+        .user-info {
+            flex-grow: 1;
+            padding-left: 10px;
+        }
+        
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-score {
+            font-weight: bold;
+            color: #00c16e;
+        }
+        
+        .you-badge {
+            background: #FF5722;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .prize-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .prize-list {
+            list-style: none;
+            padding: 5px 0 0 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 5px;
+        }
+        .prize-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 8px;
+            border-radius: 6px;
+            flex-basis: 45%;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏆 Reyting Janggi</h2>
+    
+    <div class="timer-box">
+        <div class="timer-title">Turnir Tugashiga Qoldi</div>
+        <div id="countdown-timer">Yuklanmoqda...</div>
+    </div>
+    
+    <div class="prize-info">
+        <div style="font-weight: bold; margin-bottom: 5px;">Sovrinlar Fondi (Eng ko'p Launch Miner uchun)</div>
+        <ul class="prize-list" id="prize-list">
+            <li class="prize-item">Top 1: 0 ₽</li>
+            <li class="prize-item">Top 2: 0 ₽</li>
+            <li class="prize-item">Top 3: 0 ₽</li>
+            </ul>
+    </div>
+
+    <h3 style="color: #fff; margin-top: 25px; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 10px;">📊 Top 10 Ishtirokchi</h3>
+    
+    <ul class="ranking-list" id="ranking-list">
+        <li style="text-align: center; color: #E0E0E0;">Yuklanmoqda...</li>
+    </ul>
+    
+    <div id="user-rank-info" style="margin-top: 20px; font-size: 14px;"></div>
+</div>
+
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, get, child, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+// === FIREBASE KONFIGURATSIYASI ===
+const firebaseConfig = {
+  apiKey: "AIzaSyDIeG8dVbm0Yk7FR1hPzrBoD7rgDKWAFoY",
+  authDomain: "user1111-c84a0.firebaseapp.com",
+  databaseURL: "https://user1111-c84a0-default-rtdb.firebaseio.com",
+  projectId: "user1111-c84a0",
+  storageBucket: "user1111-c84a0.firebaseapp.com",
+  messagingSenderId: "901723757936",
+  appId: "1:901723757936:web:9da0a1c7ec494f4a0c03b5",
+  measurementId: "G-9R8ZQY63B1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dbRef = ref(db);
+
+let deviceId = localStorage.getItem("deviceId");
+if(!deviceId){
+    deviceId = "user_"+Math.random().toString(36).substr(2,9);
+}
+
+// Global o'zgaruvchilar
+let adminSettings = null;
+let countdownInterval = null;
+
+// === Taymer funksiyasi ===
+function startCountdown(endTime) {
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    const timerEl = document.getElementById("countdown-timer");
+    
+    countdownInterval = setInterval(() => {
+        const now = Date.now();
+        const distance = endTime - now;
+
+        if (distance < 0) {
+            clearInterval(countdownInterval);
+            timerEl.innerText = "Tugadi! Sovrinlar tarqatilmoqda.";
+            return;
+        }
+
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        const pad = (num) => String(num).padStart(2, '0');
+        timerEl.innerText = `${pad(hours)}h : ${pad(minutes)}m : ${pad(seconds)}s`;
+    }, 1000);
+}
+
+// === Sovrinlar ro'yxatini chiqarish ===
+function renderPrizes(prizes) {
+    const listEl = document.getElementById("prize-list");
+    listEl.innerHTML = '';
+    
+    // prizeKeys 0-dan boshlanganligi uchun index+1 Top N bo'ladi
+    Object.keys(prizes).forEach((key, index) => {
+        const prizeAmount = prizes[key];
+        const li = document.createElement('li');
+        li.className = 'prize-item';
+        li.innerText = `Top ${index + 1}: ${prizeAmount} ₽`;
+        listEl.appendChild(li);
+    });
+}
+
+// === Reytingni chiqarish ===
+async function loadRanking() {
+    const rankingListEl = document.getElementById("ranking-list");
+    const userRankInfoEl = document.getElementById("user-rank-info");
+    rankingListEl.innerHTML = '<li style="text-align: center; color: #E0E0E0;">Ma\'lumotlar yuklanmoqda...</li>';
+    userRankInfoEl.innerHTML = '';
+
+    try {
+        // 1. Admin sozlamalarini yuklash
+        const adminSnapshot = await get(child(dbRef, "admin/rating"));
+        if (adminSnapshot.exists()) {
+            adminSettings = adminSnapshot.val();
+            
+            // Taymerni ishga tushirish
+            if (adminSettings.endTime) {
+                startCountdown(adminSettings.endTime);
+            } else {
+                 document.getElementById("countdown-timer").innerText = "Turnir o'rnatilmagan.";
+            }
+
+            // Sovrinlarni ko'rsatish
+            if (adminSettings.prizes) {
+                renderPrizes(adminSettings.prizes);
+            }
+
+        } else {
+            document.getElementById("countdown-timer").innerText = "Admin sozlamalari topilmadi.";
+        }
+
+        // 2. Barcha foydalanuvchilarni yuklash
+        const usersSnapshot = await get(child(dbRef, "users"));
+        if (!usersSnapshot.exists()) {
+             rankingListEl.innerHTML = '<li style="text-align: center; color: #E0E0E0;">Hali ishtirokchilar yo\'q.</li>';
+             return;
+        }
+        
+        const usersData = usersSnapshot.val();
+        
+        // 3. Ishga tushirish soni (launchCount) bo'yicha saralash
+        const sortedUsers = Object.keys(usersData)
+            .map(key => ({
+                id: key,
+                // launchCount maydoni index.html da mavjud deb hisoblaymiz (agar yo'q bo'lsa, 0)
+                launchCount: usersData[key].launchCount || 0,
+                // Foydalanuvchi nomini telegramId dan olish, agar bo'lmasa qisman ID
+                displayName: usersData[key].telegramId ? `ID ${usersData[key].telegramId}` : `Foydalanuvchi ${key.substring(5, 9)}`
+            }))
+            .sort((a, b) => b.launchCount - a.launchCount); // Kamayish tartibida saralash
+            
+        rankingListEl.innerHTML = '';
+        
+        let userFound = false;
+        
+        // 4. Reytingni ekranga chiqarish (Top 10)
+        sortedUsers.slice(0, 10).forEach((user, index) => {
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            const isYou = user.id === deviceId;
+            
+            if (isYou) userFound = true;
+
+            const li = document.createElement('li');
+            li.className = `ranking-item ${isTop3 ? 'top-3' : ''} ${isYou ? 'you' : ''}`;
+
+            li.innerHTML = `
+                <div class="rank-number">${rank}</div>
+                <div class="user-info">
+                    <span class="user-name">${user.displayName}</span>
+                    ${isYou ? '<span class="you-badge">Siz</span>' : ''}
+                </div>
+                <div class="user-score">${user.launchCount} Launch</div>
+            `;
+            rankingListEl.appendChild(li);
+        });
+        
+        // 5. Foydalanuvchining o'z o'rnini topish va ko'rsatish (agar u Top 10da bo'lmasa)
+        const myRank = sortedUsers.findIndex(user => user.id === deviceId);
+        if (myRank !== -1) {
+            const myData = sortedUsers[myRank];
+            
+            // Faqat o'zimizning o'rni Top 10 dan tashqarida bo'lsa ko'rsatamiz
+            if (myRank >= 10) {
+                 userRankInfoEl.innerHTML = `
+                    Sizning o'rningiz: <span style="font-weight: bold; color: #FFD700;">#${myRank + 1}</span> (Ball: ${myData.launchCount} Launch)
+                `;
+            }
+        } else {
+             userRankInfoEl.innerHTML = `Siz hali reytingda ishtirok etmadingiz.`;
+        }
+        
+    } catch (error) {
+        console.error("Reyting yuklashda xatolik:", error);
+        rankingListEl.innerHTML = '<li style="text-align: center; color: red;">Ma\'lumotlarni yuklashda xatolik yuz berdi.</li>';
+    }
+}
+
+
+window.onload = loadRanking;
+
+// **MUHIM ESLATMA:**
+// index.html dagi `launchMiner` funksiyasiga quyidagi qatorni qo'shing:
+/*
+    // 3. Ma'lumotlarni saqlash (Taymer boshlanganda)
+    let lastLaunchTime = Date.now();
+    
+    // BU YERGA QO'SHILADI:
+    const newLaunchCount = (data.launchCount || 0) + 1; // data - initApp dan kelgan user ma'lumotlari
+    
+    update(ref(db, "users/" + deviceId), { 
+        lastLaunchTime: lastLaunchTime, 
+        isMining: true,
+        launchCount: newLaunchCount // Yangi maydonni saqlash
+    });
+*/
+</script>
+
+</body>
+</html>
