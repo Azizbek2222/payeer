@@ -240,6 +240,48 @@
     }
 
 
+
+        /* === YANGI: CHAT TUGMASI STILI === */
+    .chat-btn-container {
+        position: absolute;
+        right: 15px; /* O'ng burchakdan masofa */
+        top: 10px; /* Yuqori burchakdan masofa, top-bar ichida joylashadi */
+        z-index: 11; /* Boshqa elementlardan ustun turishi uchun */
+    }
+    
+    .chat-btn {
+        background: #FF5722; /* Yorqin to'q sariq rang */
+        color: white;
+        border: none;
+        border-radius: 50%; /* Dumaloq shakl */
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+        line-height: 45px;
+        text-align: center;
+        box-shadow: 0 4px 10px rgba(255,87,34,0.5);
+        cursor: pointer;
+        transition: transform 0.2s, background 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none; /* A tagi bo'lsa, chiziqni olib tashlash */
+        font-weight: bold;
+    }
+    
+    .chat-btn:hover {
+        background: #e64a19;
+        transform: scale(1.05);
+    }
+    
+    /* Ikonka stili (Agar siz faqat M harfini ishlatsangiz, bu kerak emas. Agar rasm ishlatsangiz, o'zgartiring) */
+    .chat-btn span {
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+
+
 </style>
 
 </head>
@@ -250,6 +292,14 @@
         <div class="balance-title">Balance</div>
         <div class="balance-value" id="balance">0 so'm</div>
     </div>
+    
+    <div class="chat-btn-container">
+        <a href="chat.html" class="chat-btn">
+            <span>💬</span> 
+        </a>
+    </div>
+    </div>
+
     
     </div>
 

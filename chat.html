@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
+<title>🚀 Rocket Mining Chat</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #4e9fff, #6ac9ff);
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        max-width: 600px;
+        width: 100%;
+        margin: 0 auto;
+    }
+    /* Xabarlar ro'yxati joylashuvi */
+    #chat-messages {
+        flex-grow: 1;
+        background: #f8f8f8;
+        border-radius: 12px 12px 0 0;
+        padding: 15px;
+        list-style: none;
+        overflow-y: auto;
+        margin: 0;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+    }
+    /* Xabarlar stili */
+    .message-bubble {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        max-width: 85%;
+    }
+    .message-content {
+        padding: 10px 15px;
+        border-radius: 18px;
+        line-height: 1.4;
+        word-wrap: break-word;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .message-user {
+        font-size: 11px;
+        color: #555;
+        margin-bottom: 3px;
+        display: flex; /* Nik va galochkani yonma-yon qo'yish uchun */
+        align-items: center;
+    }
+    .verified-icon {
+        width: 20px; /* Galochka o'lchami */
+        height: 20px;
+        margin-left: 5px;
+    }
+
+    /* O'z xabarlari (You) */
+    .message-mine {
+        align-self: flex-end;
+    }
+    .message-mine .message-content {
+        background: #007bff;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    .message-mine .message-user {
+        text-align: right;
+        color: #e0e0e0;
+    }
+    .message-mine .message-user .verified-icon {
+        /* O'z xabarining nikini o'ng tomonga siljitish uchun */
+        order: 2; 
+        margin-left: 0;
+        margin-right: 5px;
+    }
+
+
+    /* Boshqa foydalanuvchi xabarlari (Them) */
+    .message-other {
+        align-self: flex-start;
+    }
+    .message-other .message-content {
+        background: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+    }
+    
+    /* Admin xabarlari */
+    .message-admin {
+        align-self: flex-start; /* Admin xabarlari ham oddiydek chapda ko'rinadi */
+    }
+    .message-admin .message-content {
+        background: #ffaa00;
+        color: white;
+        font-weight: bold;
+        border-bottom-left-radius: 4px;
+    }
+    .message-admin .message-user {
+        color: #cc8000; /* Admin nikining rangi */
+    }
+
+
+    /* Input maydoni */
+    .chat-input {
+        display: flex;
+        padding: 10px;
+        background: white;
+        border-top: 1px solid #ddd;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    #message-input {
+        flex-grow: 1;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        font-size: 16px;
+        margin-right: 10px;
+    }
+    #send-btn {
+        background: #00c16e;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    #send-btn:active {
+        background: #00a25e;
+    }
+
+    /* Title Bar */
+    .chat-title {
+        text-align: center;
+        padding: 15px;
+        background: #333;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="chat-title">
+    🚀 Umumiy Chat
+</div>
+
+<div class="chat-container">
+    <ul id="chat-messages">
+        </ul>
+    
+    <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Xabar yozish..." onkeyup="checkEnter(event)">
+        <button id="send-btn" onclick="sendMessage()">Yuborish</button>
+    </div>
+</div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+// === FIREBASE KONFIGURATSIYASI ===
+// Konfiguratsiyani o'zgartiring!
+const firebaseConfig = {
+  apiKey: "AIzaSyDIeG8dVbm0Yk7FR1hPzrBoD7rgDKWAFoY",
+  authDomain: "user1111-c84a0.firebaseapp.com",
+  databaseURL: "https://user1111-c84a0-default-rtdb.firebaseio.com",
+  projectId: "user1111-c84a0",
+  storageBucket: "user1111-c84a0.firebaseapp.com",
+  messagingSenderId: "901723757936",
+  appId: "1:901723757936:web:9da0a1c7ec494f4a0c03b5",
+  measurementId: "G-9R8ZQY63B1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const chatRef = ref(db, 'chats/global_chat'); 
+
+// Device ID ni olish (asosiy ilovadagi kabi)
+let deviceId = localStorage.getItem("deviceId");
+if(!deviceId){
+    deviceId = "user_"+Math.random().toString(36).substr(2,9);
+    localStorage.setItem("deviceId", deviceId);
+}
+
+// === CONSTANTS ===
+// Tasdiqlangan galochka rasmi (yashil)
+const VERIFIED_ICON_URL = "galochka.png";
+
+// === CHAT MANTIQI ===
+
+function renderMessage(message, isMine) {
+    const chatMessagesEl = document.getElementById('chat-messages');
+    
+    const li = document.createElement('li');
+    li.classList.add('message-bubble');
+    
+    // --- NIKNI VA GALOCHKANI ANQLASH VA SHAKLLANTIRISH ---
+    let usernameDisplay;
+    let bubbleClass;
+
+    if (message.isAdmin) {
+        // ADMIN xabari
+        const adminNik = message.username || "Yordamchi";
+        usernameDisplay = `${adminNik} <img src="${VERIFIED_ICON_URL}" alt="Verified" class="verified-icon">`;
+        bubbleClass = 'message-admin';
+    } else if (isMine) {
+        // O'zingizning xabaringiz
+        usernameDisplay = message.username || deviceId.substring(0, 8);
+        bubbleClass = 'message-mine';
+    } else {
+        // Boshqa foydalanuvchilar xabari
+        usernameDisplay = message.username || "Anonim";
+        bubbleClass = 'message-other';
+    }
+
+    li.classList.add(bubbleClass);
+    // --------------------------------------------------------
+
+    li.innerHTML = `
+        <span class="message-user">${usernameDisplay}</span>
+        <div class="message-content">${message.text}</div>
+    `;
+
+    chatMessagesEl.appendChild(li);
+    // Eng pastga aylantirish
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+// Xabar yuborish
+window.sendMessage = function() {
+    const inputEl = document.getElementById('message-input');
+    const messageText = inputEl.value.trim();
+
+    if (messageText === "") return;
+
+    const newMessage = {
+        user_id: deviceId, 
+        username: deviceId.substring(0, 8), // Nik sifatida ID ning qismini ishlatamiz
+        text: messageText,
+        timestamp: serverTimestamp(),
+        isAdmin: false // Oddiy foydalanuvchi
+    };
+
+    push(chatRef, newMessage)
+        .then(() => {
+            inputEl.value = ''; // Yuborilgandan keyin maydonni tozalash
+        })
+        .catch(error => {
+            console.error("Xabar yuborishda xato:", error);
+            alert("Xabar yuborilmadi. Internet yoki server bilan muammo.");
+        });
+};
+
+// Enter tugmasi bilan yuborish
+window.checkEnter = function(event) {
+    if (event.key === "Enter") {
+        sendMessage();
+    }
+}
+
+// Xabarlarni tinglash (Real-time)
+const messagesQuery = query(chatRef, limitToLast(100)); // Oxirgi 100 ta xabar
+
+onValue(messagesQuery, (snapshot) => {
+    const chatMessagesEl = document.getElementById('chat-messages');
+    chatMessagesEl.innerHTML = ''; // Listni tozalash
+
+    snapshot.forEach((childSnapshot) => {
+        const message = childSnapshot.val();
+        // Foydalanuvchining o'z xabarimi?
+        const isMine = message.user_id === deviceId && !message.isAdmin; 
+        renderMessage(message, isMine);
+    });
+});
+</script>
+
+</body>
+</html>
