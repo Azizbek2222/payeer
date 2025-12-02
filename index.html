@@ -7,7 +7,80 @@
 <title>rocket mining</title>
 
 <style>
-    body {
+  
+body {
+        font-family: Arial, sans-serif;
+        /* Asosiy fonni qora yoki tungi rangga o'zgartirish */
+        background: #000022; /* Tungi koinot rangi */
+        color: white; /* Matn rangini oq qilish */
+        text-align: center;
+        padding: 0;
+        margin: 0;
+        overflow: hidden; /* Scrollni oldini olish */
+        min-height: 100vh;
+        position: relative;
+        padding-bottom: 70px; 
+        background-attachment: fixed; 
+    }
+
+    /* Yulduzlar animatsiyasi uchun stil */
+    .star-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 0; /* Pastki fon bo'lishi uchun */
+    }
+
+    /* Kichik yulduzlar */
+    .star-layer::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* Yulduzlar yaratish (radial-gradient, box-shadow kabi ishlaydi) */
+        background: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                    /* ... (Ko'proq yulduzlar) */
+                    radial-gradient(1.5px 1.5px at 150px 180px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 250px 200px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 300px 100px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 350px 250px, #fff, rgba(0,0,0,0)),
+                    /* Yana kichik yulduzlar */
+                    radial-gradient(1px 1px at 50% 50%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 10% 70%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 80% 10%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 60% 85%, #fff, rgba(0,0,0,0));
+                    
+        /* Koinot fonini siljitish (Parallax effekti uchun sekin) */
+        animation: starfield 100s linear infinite;
+        background-size: 400px 400px; /* Yulduzlar takrorlanishi */
+    }
+
+    /* Kattaroq va tezroq harakatlanuvchi yulduzlar (chuqurlik effekti) */
+    .star-layer::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(3px 3px at 40px 100px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 120px 220px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 200px 10px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 300px 300px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 10% 20%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90% 80%, #fff, rgba(0,0,0,0));
+
+        /* Koinot fonini tezroq siljitish */
+        animation: starfield 50s linear infinite reverse;
+        background-size: 500px 500px;
+    }
+
+  body {
         font-family: Arial, sans-serif;
         background: linear-gradient(135deg, #4e9fff, #6ac9ff);
         text-align: center;
