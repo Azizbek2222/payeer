@@ -194,7 +194,7 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     
-    /* Qalqon va Yoqilg'i tugmalari 0% bo'lganda ko'rinishi uchun */
+    /* Qalqon va Yoqilg'i tugmalari 100% bo'lganda ko'rinmasligi uchun */
     .refill-btn.hidden {
         display: none;
     }
@@ -661,7 +661,7 @@ function initApp() {
 window.onload = initApp;
 
 
-// === FOIZLARNI VA TUGMALARNI YANGILASH FUNKSIYASI ===
+// === FOIZLARNI VA TUGMALARNI YANGILASH FUNKSIYASI (O'ZGARTIRILDI) ===
 function updateStatus() {
     // Faqat butun sonni ko'rsatish
     fuelValueEl.innerText = `${Math.floor(fuel)}%`;
@@ -669,6 +669,7 @@ function updateStatus() {
     
     // Tugmalarni yashirish/ko'rsatish mantig'i: Faqat 100% dan past bo'lsa ko'rinadi
     // 99.99% dan past bo'lsa to'ldirish tugmasini ko'rsatish.
+    // So'rov bo'yicha tahrirlandi: Endi 100% (yoki 99.99% dan yuqori) bo'lsa, tugma yashirinadi.
     
     if (fuel > 99.99) {
         fuelBtn.classList.add("hidden");
