@@ -174,7 +174,9 @@ async function loadUserData() {
             if (userData.completed_tasks) {
                 completedTasks = userData.completed_tasks;
             }
-            return userData.balance || 0.00;
+            // === TUZATISH 1: Balansni yuklashda uni raqamga aylantirish ===
+            return parseFloat(userData.balance) || 0.00;
+            // ============================================================
         }
     } catch (error) {
         console.error("Foydalanuvchi ma'lumotlarini olishda xatolik:", error); // O'zgartirildi
@@ -292,15 +294,17 @@ async function confirmTask(taskId, reward, requiredWaitTime, startTime) {
     }
     
     // 2. Balansni yangilash
-    let currentBalance = await loadUserData(); // Eng yangi balansni olish
-    const newBalance = currentBalance + reward;
+    let currentBalance = await loadUserData(); // Eng yangi balansni olish (Raqam)
+    const newBalance = currentBalance + reward; // Yangi balans (Raqam)
     
     try {
-        // Balans va bajarilgan vazifalarni Firebase'ga yozish (Atomik update emas, ammo soddalik uchun)
+        // Balans va bajarilgan vazifalarni Firebase'ga yozish
+        // === TUZATISH 2: Balansni string sifatida saqlash uchun toFixed(2) ishlatildi ===
         await update(ref(db, "users/" + deviceId), { 
-            balance: newBalance,
+            balance: newBalance.toFixed(2), // Pulni string formatida saqlash
             [`completed_tasks/${taskId}`]: Date.now()
         });
+        // ==============================================================================
         
         // 3. Foydalanuvchi interfeysini yangilash: Bajarilgan deb belgilash
         // Valyuta o'zgartirildi: so'm
