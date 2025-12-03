@@ -7,7 +7,80 @@
 <title>rocket mining</title>
 
 <style>
-    body {
+  
+body {
+        font-family: Arial, sans-serif;
+        /* Asosiy fonni qora yoki tungi rangga o'zgartirish */
+        background: #000022; /* Tungi koinot rangi */
+        color: white; /* Matn rangini oq qilish */
+        text-align: center;
+        padding: 0;
+        margin: 0;
+        overflow: hidden; /* Scrollni oldini olish */
+        min-height: 100vh;
+        position: relative;
+        padding-bottom: 70px; 
+        background-attachment: fixed; 
+    }
+
+    /* Yulduzlar animatsiyasi uchun stil */
+    .star-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 0; /* Pastki fon bo'lishi uchun */
+    }
+
+    /* Kichik yulduzlar */
+    .star-layer::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* Yulduzlar yaratish (radial-gradient, box-shadow kabi ishlaydi) */
+        background: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                    /* ... (Ko'proq yulduzlar) */
+                    radial-gradient(1.5px 1.5px at 150px 180px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 250px 200px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 300px 100px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 350px 250px, #fff, rgba(0,0,0,0)),
+                    /* Yana kichik yulduzlar */
+                    radial-gradient(1px 1px at 50% 50%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 10% 70%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 80% 10%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1px 1px at 60% 85%, #fff, rgba(0,0,0,0));
+                    
+        /* Koinot fonini siljitish (Parallax effekti uchun sekin) */
+        animation: starfield 100s linear infinite;
+        background-size: 400px 400px; /* Yulduzlar takrorlanishi */
+    }
+
+    /* Kattaroq va tezroq harakatlanuvchi yulduzlar (chuqurlik effekti) */
+    .star-layer::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(3px 3px at 40px 100px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 120px 220px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 200px 10px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 300px 300px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 10% 20%, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90% 80%, #fff, rgba(0,0,0,0));
+
+        /* Koinot fonini tezroq siljitish */
+        animation: starfield 50s linear infinite reverse;
+        background-size: 500px 500px;
+    }
+
+  body {
         font-family: Arial, sans-serif;
         background: linear-gradient(135deg, #4e9fff, #6ac9ff);
         text-align: center;
@@ -532,6 +605,7 @@ function initApp() {
     // REFERRAL MANTIQI: Telegram TWA dan start_param ni olish va uni global qilish
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
         const startParam = window.Telegram.WebApp.initDataUnsafe.start_param;
+        // Agar startParam mavjud bo'lsa va u hozirgi foydalanuvchining ID si bo'lmasa, uni saqlaymiz
         if (startParam && startParam !== deviceId) {
             referrerId = startParam; 
             console.log("Referrer ID topildi:", referrerId);
@@ -544,29 +618,45 @@ function initApp() {
             const data = snapshot.val();
             
             // FOIZLAR VA BALANSNI YUKLASH
-            if(data.balance !== undefined) balance = data.balance;
+            
+            // === BU QATOR TUZATILDI: Balansni yuklashda uni Raqamga (Number) aylantirish
+            if(data.balance !== undefined) {
+                 // Agar Firebase'da string sifatida saqlangan bo'lsa ham, uni raqamga aylantiramiz
+                 balance = parseFloat(data.balance) || 0; 
+            }
+            // ===================================================================
+            
             if(data.fuel !== undefined) fuel = data.fuel;
             if(data.shield !== undefined) shield = data.shield;
             
             // Agar foydalanuvchining referrerId ma'lumoti mavjud bo'lsa, uni ham saqlash
-            if(data.referrerId !== undefined) referrerId = data.referrerId;
+            // Faqat bir marta o'rnatish uchun: agar data.referrerId mavjud bo'lmasa va URL'dan olingan bo'lsa
+            if(!data.referrerId && referrerId) {
+                // Yangi topilgan referrerId'ni Firebase'ga saqlash
+                update(ref(db, "users/" + deviceId), { referrerId: referrerId });
+            } else if (data.referrerId) {
+                 // Agar Firebase'da mavjud bo'lsa, uni ishlatish
+                 referrerId = data.referrerId;
+            }
             
             // === O'ZGARTIRILGAN QATOR ===
             document.getElementById("balance").innerText = balance.toFixed(2)+" so'm";
             // =============================
             updateStatus();
             
-            // Agar mining jarayoni tugallanmagan bo'lsa, davom ettirish
+            // Mining jarayonini davom ettirish yoki tugatish mantiqi
             if(data.isMining && data.lastLaunchTime){
                 const now = Date.now();
                 const timeSinceLastLaunch = Math.floor((now - data.lastLaunchTime) / 1000); // Sekunddagi farq
                 
                 // Ilovaga kirguncha o'tgan haqiqiy mining vaqti:
                 // Resurslar tugashini hisobga olgan holda maksimal vaqt.
+                // Qalqon va Yoqilg'i qanchada tugashini sekundda hisoblash
                 const maxDurationByFuel = fuel / DECREMENT_RATE;
                 const maxDurationByShield = shield / DECREMENT_RATE;
                 
                 // O'tgan samarali mining vaqti
+                // O'tgan vaqt, Yoqilg'i tugash vaqti va Qalqon tugash vaqtining eng kichigini olish
                 const effectiveMiningTime = Math.min(timeSinceLastLaunch, maxDurationByFuel, maxDurationByShield);
                 
                 // Balans va foizlarni hisoblash
@@ -578,28 +668,33 @@ function initApp() {
                     fuel = Math.max(0, fuel - decrementAmount);
                     shield = Math.max(0, shield - decrementAmount);
 
-                    // REFERRAL BONUSINI BIR YO'LIGA HISOBLASH (Siz yo'qligingizda ishlangan pul)
-                    if (data.referrerId) {
+                    // YANGI MANTIQ QO'SHILDI: REFERRAL BONUSINI ASOSIY FOYDALANUVCHIGA HAM HISOBLASH
+                    if (referrerId) {
                          const totalReferrerBonus = effectiveMiningTime * REWARD_PER_SECOND * 0.02; // 2%
                          
-                         // REFERRER balansini faqat shu yerda, foydalanuvchi appni ochganda yangilaymiz.
-                         get(child(dbRef, "users/" + data.referrerId)).then(refSnapshot => {
+                         // REFERRER balansini yangilash
+                         get(child(dbRef, "users/" + referrerId)).then(refSnapshot => {
                              if (refSnapshot.exists()) {
                                  const refData = refSnapshot.val();
-                                 const newRefBalance = (refData.balance || 0) + totalReferrerBonus;
-                                 const newRefBonus = (refData.referral_bonus || 0) + totalReferrerBonus;
+                                 // Referral bonusini o'ziga xos maydonga qo'shish
+                                 // Referral bonusini yuklashda ham parse qilish kerak bo'lishi mumkin
+                                 const currentRefBonus = parseFloat(refData.referral_bonus) || 0;
+                                 const newRefBonus = currentRefBonus + totalReferrerBonus;
                                  
-                                 update(ref(db, "users/" + data.referrerId), { 
-                                     balance: newRefBalance,
-                                     referral_bonus: newRefBonus
+                                 update(ref(db, "users/" + referrerId), { 
+                                     // O'tgan vaqtdagi bonusni asosiy balansga qo'shmaslik, faqat referral_bonus maydoniga qo'shish
+                                     referral_bonus: newRefBonus.toFixed(2)
                                  });
                              }
+                         }).catch(error => {
+                             console.error("Referrer bonusini yangilashda xatolik:", error);
                          });
                     }
                     
                 }
                 
                 // Qolgan vaqtni resurslarning eng past foiziga qarab hisoblash
+                // RemainingTime ni o'tgan vaqtdan keyingi holatiga qarab hisoblash
                 const lowestResourcePercent = Math.min(fuel, shield);
                 remainingTime = Math.max(0, Math.floor(lowestResourcePercent / DECREMENT_RATE)); 
                 
@@ -608,13 +703,22 @@ function initApp() {
                     // Miningni to'xtatish va Firebase'ga yakuniy holatni yozish
                     fuel = 0;
                     shield = 0;
+                    
                     // === O'ZGARTIRILGAN QATOR ===
                     document.getElementById("balance").innerText = balance.toFixed(2)+" so'm";
                     // =============================
                     updateStatus();
-                    update(ref(db, "users/" + deviceId), { balance: balance, fuel: 0, shield: 0, isMining: false });
+                    
+                    // YANGI MANTIQ: lastLaunchTime ni ham yangilash - bu juda muhim!
+                    update(ref(db, "users/" + deviceId), { 
+                        balance: balance.toFixed(2), // Balansni string sifatida saqlash
+                        fuel: 0, 
+                        shield: 0, 
+                        isMining: false, 
+                        lastLaunchTime: Date.now() // Tugagan vaqtni yozib qo'yish
+                    });
                     stopMining();
-                    console.log("Resurslar tugadi. Mining to'xtatildi.");
+                    console.log("Resurslar tugadi. Mining to'xtatildi va Firebase yangilandi.");
                 } else {
                     // Miningni davom ettirish
                     
@@ -624,23 +728,24 @@ function initApp() {
                     // =============================
                     updateStatus();
                     
+                    // YANGI MANTIQ: lastLaunchTime ni hozirgi vaqtga yangilash
+                    // Bu, keyingi kirishda faqat shu vaqtdan boshlab hisoblashni ta'minlaydi.
+                    update(ref(db, "users/" + deviceId), { 
+                        balance: balance.toFixed(2), // Balansni string sifatida saqlash
+                        fuel: fuel, 
+                        shield: shield,
+                        isMining: true,
+                        lastLaunchTime: now
+                    });
+                    
                     startTimer(); // Taymerni qolgan vaqtdan davom ettirish
                     console.log(`Davom etish: Effective Mining Time: ${effectiveMiningTime}s. Qolgan vaqt: ${remainingTime}s.`);
                 }
                 
-                // Har qanday holatda, yangi balans va foizlarni yozish
-                update(ref(db, "users/" + deviceId), { 
-                    balance: balance, 
-                    fuel: fuel, 
-                    shield: shield,
-                    isMining: remainingTime > 0 
-                });
-
-
             }
         } else {
             // Yangi foydalanuvchi bo'lsa, 0% bilan saqlash
-            const newUser_data = { fuel: 0, shield: 0, balance: 0, isMining: false };
+            const newUser_data = { fuel: 0, shield: 0, balance: "0.00", isMining: false, lastLaunchTime: Date.now() };
             
             if (referrerId) {
                  newUser_data.referrerId = referrerId;
@@ -654,6 +759,8 @@ function initApp() {
             // =============================
             updateStatus();
         }
+    }).catch(error => {
+        console.error("Firebase'dan ma'lumotlarni yuklashda xatolik:", error);
     });
 }
 
@@ -713,13 +820,18 @@ function stopMining() {
 }
 
 function updateMiningStatus() {
+    // Har bir tsiklda tekshirish, shuningdek, Firebase'ga yangilanishni yuborishdan oldin ham
     if (remainingTime <= 0 || fuel <= 0 || shield <= 0) {
-        stopMining();
+        // Yangilanishda firebasedagi isMining = false ga o'rnatiladi
+        stopMining(); 
+        
+        // YANGI MANTIQ: Mining to'xtaganidan keyin yakuniy holatni Firebase'ga saqlash
         update(ref(db, "users/" + deviceId), { 
             isMining: false, 
             fuel: Math.max(0, fuel), 
             shield: Math.max(0, shield),
-            balance: balance 
+            balance: balance.toFixed(2), // Pulni 2 xonali aniqlikda saqlash (string)
+            lastLaunchTime: Date.now() // Tugagan vaqtni yozish
         });
         return;
     }
@@ -745,6 +857,17 @@ function updateMiningStatus() {
     const seconds = remainingTime % 60;
     const pad = (num) => String(num).padStart(2, '0');
     adBtn.innerText = `Mining: ${pad(minutes)}:${pad(seconds)}`;
+
+    // YANGI MANTIQ: Har 10 ta yangilanishda (10 sekundda) Firebase'ga yozish
+    if (remainingTime % 10 === 0) {
+        update(ref(db, "users/" + deviceId), { 
+            fuel: fuel, 
+            shield: shield,
+            balance: balance.toFixed(2), // Balansni string sifatida saqlash
+            //lastLaunchTime ni yangilamaslik (bu faqat start yoki stop da kerak)
+        });
+        console.log(`Firebase yangilandi: qolgan vaqt: ${remainingTime}`);
+    }
 }
 
 function startTimer() {
@@ -761,8 +884,6 @@ function startTimer() {
 
 // =======================================================
 
-
-// =======================================================
 
 </script>
 
