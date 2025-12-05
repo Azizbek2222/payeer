@@ -47,8 +47,8 @@
 <div class="withdraw-box">
     <div class="box-title">💸 Pulni yechib olish</div>
     <form id="withdrawForm">
-        <input type="text" id="payeer" placeholder="uzcard yoki humo karta raqamingizni kiriting." required><br>
-        <input type="number" id="amount" placeholder="Miqdori (so'm)" min="0.01" step="0.01" required><br>
+        <input type="text" id="payeer" placeholder="FaucetPay E-mail manzilingizni kiriting." required><br>
+        <input type="number" id="amount" placeholder="Miqdori (USDT)" min="0.0001" step="0.0001" required><br>
         <button type="submit" class="submit-btn">So'rov yuboring</button>
     </form>
     <button class="back-btn" onclick="location.href='index.html'">Orqaga</button>
@@ -81,7 +81,7 @@
         window.location.href = "index.html";
     }
     
-    // === MINIMAL YECHISH MIQDORI ===
+    // === O'ZGARTIRILGAN QATOR: MINIMAL YECHISH MIQDORI USDT da ===
     const MIN_WITHDRAWAL = 0.01; 
 
     document.getElementById("withdrawForm").addEventListener("submit", function(e){
@@ -90,15 +90,19 @@
         const payeer = document.getElementById("payeer").value.trim();
         const amount = parseFloat(document.getElementById("amount").value);
         
-        if (payeer === "" || amount <= 0 || isNaN(amount)) {
-            alert("Iltimos, uzcard/humo karta raqamingizni va to'g'ri miqdorni kiriting.");
+        // FaucetPay E-mail manzilini tekshirishni yaxshilash
+        // Oddiy tekshiruv: @ belgisi va . belgisi mavjud bo'lishi kerak
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
+        
+        if (payeer === "" || !emailPattern.test(payeer) || amount <= 0 || isNaN(amount)) {
+            alert("Iltimos, to'g'ri FaucetPay E-mail manzili va miqdorni kiriting.");
             return;
         }
         
         // === YANGI: Minimal miqdorni tekshirish ===
         if (amount < MIN_WITHDRAWAL) {
-            // Xabarda valyuta o'zgartirildi: (so'm)
-            alert(`Minimal yechib olish miqdori ${MIN_WITHDRAWAL.toFixed(2)} so'm ni tashkil qiladi.`);
+            // Pul birligi USDT ga o'zgartirildi
+            alert(`Minimal yechib olish miqdori ${MIN_WITHDRAWAL.toFixed(4)} USDT ni tashkil qiladi.`);
             return;
         }
 
@@ -106,34 +110,40 @@
         get(child(dbRef, "users/"+deviceId)).then((snapshot) => {
             if (snapshot.exists()) {
                 const userData = snapshot.val();
-                const currentBalance = userData.balance || 0.00;
+                // Balansni raqamga o'girib olish
+                const currentBalance = parseFloat(userData.balance) || 0.0000;
 
                 if (amount > currentBalance) {
-                    // Xabarda valyuta o'zgartirildi: (so'm)
-                    alert("Balansingizda mablag‘ yetarli emas. Sizning balansingiz: " + currentBalance.toFixed(2) + " so'm");
+                    // Pul birligi USDT ga o'zgartirildi
+                    alert("Balansingizda mablag‘ yetarli emas. Sizning balansingiz: " + currentBalance.toFixed(4) + " USDT");
                     return;
                 }
                 
                 // Balans yetarli bo'lsa, so'rovni yuborish
                 const withdrawData = {
                     deviceId: deviceId,
-                    payeer: payeer,
-                    amount: amount.toFixed(2),
-                    status: "pending", // So'rov holati
+                    // Maydon nomi "payeer" emas, "faucetpay_email" bo'lishi mantiqan to'g'ri, lekin
+                    // o'zgartirmaslik so'ralgani uchun ID (payeer) shu turda qoldi.
+                    faucetpay_email: payeer, 
+                    amount: amount.toFixed(4), // 4 xonali aniqlik
+                    status: "pending", 
                     timestamp: Date.now()
                 };
 
-                // So'rovni "withdrawRequests" bo'limiga qo'shish (admin ko'rishi uchun)
+                // So'rovni "withdrawRequests" bo'limiga qo'shish
                 push(ref(db, "withdrawRequests"), withdrawData)
                 .then(() => {
                     // Foydalanuvchi balansini yangilash (kamaytirish)
                     const newBalance = currentBalance - amount;
-                    // set() o'rniga update() dan foydalanish tavsiya etiladi, chunki set() boshqa maydonlarni o'chirib yuborishi mumkin.
-                    // Lekin sizning kodingizda spread operatori ishlatilgan, shuning uchun set() qoldirildi.
-                    set(ref(db, "users/"+deviceId), {...userData, balance: newBalance}) 
+                    
+                    // Balansni 4 xonali aniqlikda string sifatida saqlash
+                    const newBalanceString = newBalance.toFixed(4);
+                    
+                    // userData ning qolgan maydonlarini saqlab qolgan holda balansni yangilash
+                    update(ref(db, "users/"+deviceId), { balance: newBalanceString }) 
                     .then(() => {
-                        // Xabarda valyuta o'zgartirildi: (so'm)
-                        alert(`So'rov muvaffaqiyatli yuborildi: ${amount.toFixed(2)} so'm karta ${payeer} raqamiga. Balansingiz yangilandi.`);
+                        // Pul birligi USDT ga o'zgartirildi
+                        alert(`So'rov muvaffaqiyatli yuborildi: ${amount.toFixed(4)} USDT FaucetPay ${payeer} manziliga. Balansingiz yangilandi.`);
                         // Yuborilgandan so'ng maydonlarni tozalash
                         document.getElementById("payeer").value = "";
                         document.getElementById("amount").value = "";
