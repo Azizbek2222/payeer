@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <meta charset="UTF-8">
-<title>Pul Yechib Olish</title>
+<title>Withdraw Money</title>
 <style>
     /* Umumiy dizayn - Ko'k shaffof fon */
     body { 
@@ -85,12 +85,12 @@
 </head>
 <body>
 <div class="withdraw-box">
-    <div class="box-title">💸 Pul Yechib Olish</div>
+    <div class="box-title">💸 Withdraw Money</div>
     <form id="withdrawForm">
         
-        <label for="withdrawType" style="display: block; text-align: left; margin-top: 10px; font-weight: bold;">Yechib olish turini tanlang:</label>
+        <label for="withdrawType" style="display: block; text-align: left; margin-top: 10px; font-weight: bold;">Select withdrawal type:</label>
         <select id="withdrawType" required>
-            <option value="">--- Tanlang ---</option>
+            <option value="">--- Choose ---</option>
             <option value="uzcard_humo">🇺🇿 Uzbekistan Card (Humo/Uzcard)</option>
             <option value="faucetpay">🪙 FaucetPay E-mail</option>
         </select>
@@ -100,16 +100,16 @@
         </div>
 
         <div id="faucetpayFields" style="display:none;">
-            <input type="text" id="faucetpayEmail" placeholder="FaucetPay E-mail manzilingizni kiriting">
+            <input type="text" id="faucetpayEmail" placeholder="Enter your FaucetPay Email Address">
         </div>
         
-        <input type="number" id="amount" placeholder="Miqdor (USDT)" min="0.01" step="0.01" required><br>
+        <input type="number" id="amount" placeholder="Quantity (USDT)" min="0.01" step="0.01" required><br>
         
-        <p id="minAmountInfo" style="font-size: 12px; color: #666; text-align: left; margin-top: -5px;">Minimal yechish miqdori: **Tanlang**</p>
+        <p id="minAmountInfo" style="font-size: 12px; color: #666; text-align: left; margin-top: -5px;">Minimum withdrawal amount: **Choose**</p>
 
-        <button type="submit" class="submit-btn">So‘rov Yuborish</button>
+        <button type="submit" class="submit-btn">Send a request</button>
     </form>
-    <button class="back-btn" onclick="location.href='index.html'">Orqaga</button>
+    <button class="back-btn" onclick="location.href='index.html'">Back</button>
 </div>
 
 <script type="module">
@@ -197,16 +197,16 @@
             recipientType = "FaucetPay E-mail";
             minAmount = MIN_WITHDRAWAL_FAUCETPAY;
             if (!emailPattern.test(recipient)) {
-                alert("Iltimos, to‘g‘ri FaucetPay E-mail manzilini kiriting.");
+                alert("Please enter a valid FaucetPay Email Address..");
                 return;
             }
         } else {
-            alert("Iltimos, pul yechib olish turini tanlang.");
+            alert("Please select a withdrawal type..");
             return;
         }
 
         if (amount <= 0 || isNaN(amount)) {
-            alert("Iltimos, to‘g‘ri miqdorni kiriting.");
+            alert("Please enter the correct amount..");
             return;
         }
         
@@ -222,7 +222,7 @@
                 const currentBalance = parseFloat(userData.balance) || 0.00;
 
                 if (amount > currentBalance) {
-                    alert("Balansingiz yetarli emas. Balansingiz: " + currentBalance.toFixed(4) + " USDT");
+                    alert("Your balance is insufficient. Your balance: " + currentBalance.toFixed(4) + " USDT");
                     return;
                 }
                 
@@ -247,7 +247,7 @@
                 })
                 .then(() => {
                     // Ikkala amal ham muvaffaqiyatli yakunlansa
-                    alert(`So‘rov muvaffaqiyatli yuborildi: ${amount.toFixed(4)} USDT ${recipientType} ga: ${recipient}. Balansingiz yangilandi.`);
+                    alert(`Request sent successfully: ${amount.toFixed(4)} USDT ${recipientType} ga: ${recipient}. Your balance has been updated.`);
                     // Maydonlarni tozalash
                     document.getElementById("cardNumber").value = "";
                     document.getElementById("faucetpayEmail").value = "";
