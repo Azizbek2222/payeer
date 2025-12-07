@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uchar Qush O'yini (USDT Bal)</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics-compat.js"></script>
+    
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #87CEEB; 
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+        }
+
+        #game-container {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 8px solid #333;
+        }
+
+        #gameCanvas {
+            display: block;
+            background-color: #B0E0E6;
+        }
+
+        #game-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: default; 
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        #game-message button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #FFD700;
+            border: none;
+            border-radius: 5px;
+            color: #333;
+            transition: background-color 0.2s;
+        }
+
+        #game-message button:hover {
+            background-color: #FFC400;
+        }
+        
+        /* 'RUB Yechish' tugmasi olib tashlangan, shuning uchun uning stili ham kerak emas */
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="480" height="640"></canvas> 
+        <div id="game-message">
+            <span>Yuklanmoqda... Balans tekshirilmoqda.</span>
+            </div>
+        
+        </div>
+    
+    <script>
+        // === FIREBASE INITSALIZATSIYASI (index.html'dan olindi) ===
+        const firebaseConfig = {
+          apiKey: "AIzaSyDIeG8dVbm0Yk7FR1hPzrBoD7rgDKWAFoY",
+          authDomain: "user1111-c84a0.firebaseapp.com",
+          databaseURL: "https://user1111-c84a0-default-rtdb.firebaseio.com",
+          projectId: "user1111-c84a0",
+          storageBucket: "user1111-c84a0.firebaseapp.com",
+          messagingSenderId: "901723757936",
+          appId: "1:901723757936:web:9da0a1c7ec494f4a0c03b5",
+          measurementId: "G-9R8ZQY63B1"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Rocket Miningdagi ID ni ishlatish
+        let deviceId = localStorage.getItem("deviceId");
+        if (!deviceId) {
+            // Agar mavjud bo'lmasa, uni yaratish
+            deviceId = "user_"+Math.random().toString(36).substr(2,9);
+            localStorage.setItem("deviceId", deviceId);
+        }
+
+        // === USDT VALYUTASIGA O'ZGARTIRILDI ===
+        let currentUSDT = 0.0000; 
+        // 0.0005 RUB o'rniga yangi qiymat
+        const USDT_PER_PIPE = 0.00003; // <--- Bu qiymat 0.00005 USDT ga o'zgartirildi
+
+        // === O'YIN SOZLAMALARI ===
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageElement = document.getElementById('game-message');
+
+        const BIRD_SIZE = 30; 
+        let birdY = canvas.height / 2; 
+        let birdVelocity = 0; 
+        const GRAVITY = 0.1;
+        const JUMP_POWER = -4.5;
+        const PIPE_SPEED = 2.0;
+        const PIPE_WIDTH = 60; 
+        const PIPE_GAP = 160; 
+        let pipes = []; 
+        let score = 0; 
+        let isGameOver = true;
+        let pipeInterval; 
+
+        // === ADSGRAM INITSALIZATSIYASI ===
+        // BlockId'ni index.html'dagi AdsGram ID'si bilan almashtirmadim, chunki u boshqa reklama turiga mo'ljallangan bo'lishi mumkin.
+        const AdController = window.Adsgram.init({ blockId: "int-18740" });
+
+        /**
+         * Firebase'dan balansni yuklaydi (USDT).
+         */
+        async function loadUserScore() {
+            messageElement.innerHTML = '<span>Yuklanmoqda...</span>';
+            try {
+                // 'deviceId' ni ishlatish
+                const snapshot = await database.ref('users/' + deviceId).once('value');
+                if (snapshot.exists() && snapshot.val().balance !== undefined) {
+                    // Rocket mining'dagi 'balance' maydonidan o'qish
+                    currentUSDT = parseFloat(snapshot.val().balance); 
+                    console.log("Yuklangan balans:", currentUSDT.toFixed(4) + " USDT");
+                } else {
+                    currentUSDT = 0.0000;
+                    // Yangi foydalanuvchi bo'lsa, ma'lumotlarni saqlashga urinish
+                    await saveUserScore(false); 
+                }
+            } catch (error) {
+                console.error("Firebase'dan balni yuklashda xato:", error);
+                messageElement.innerHTML = `<span>Xato: Firebase ulanmadi!</span><br><p style="font-size: 16px;">Iltimos, konsolni tekshiring.</p>`;
+                return; 
+            }
+            
+            // Yuklash tugagandan so'ng xabarni yangilash
+            messageElement.innerHTML = `
+                <span>Jami Balans: ${currentUSDT.toFixed(5)} USDT</span>
+                <button onclick="startGame()">O'yinni boshlash</button>
+                <p style="font-size: 16px; margin-top: 10px;">(Yoki Ekranga/Space tugmasiga bosing)</p>
+            `;
+        }
+        
+        /**
+         * Firebase'ga joriy balni saqlaydi (USDT).
+         * @param {boolean} isIncrement - Balansni oshirish/kamaytirish kerakligini bildiradi.
+         */
+        function saveUserScore(isIncrement = true) {
+            const usdtToSave = parseFloat(currentUSDT.toFixed(4)); 
+            
+            // Faqat o'yindan keyin yoki yangi foydalanuvchi bo'lsa butun ma'lumotni saqlashga urinish
+            return database.ref('users/' + deviceId).update({
+                // Rocket mining'dagi 'balance' maydonini yangilash
+                balance: usdtToSave.toFixed(4), // String sifatida saqlash
+                lastGameUpdate: new Date().toISOString()
+            }).then(() => {
+                console.log("Firebase'ga yangi balans saqlandi:", usdtToSave.toFixed(4) + " USDT");
+            }).catch(error => {
+                console.error("Firebase'ga saqlashda xato:", error);
+                alert("Balans saqlanmadi! Firebase xatosi.");
+            });
+        }
+
+        // === WITHDRAW FUNKSIYASI BUTUNLAY OLIB TASHLANDI ===
+
+        // === O'YIN MANTIQI FUNKSIYALARI ===
+
+        function drawBird() {
+            const BIRD_X = 50;
+            ctx.fillStyle = '#FFD700'; 
+            ctx.beginPath();
+            ctx.arc(BIRD_X + BIRD_SIZE / 2, birdY + BIRD_SIZE / 2, BIRD_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(BIRD_X + BIRD_SIZE - 8, birdY + 8, 4, 0, Math.PI * 2); 
+            ctx.fill();
+
+            ctx.fillStyle = '#FFA500'; 
+            ctx.beginPath();
+            ctx.moveTo(BIRD_X + BIRD_SIZE, birdY + BIRD_SIZE / 2 - 5);
+            ctx.lineTo(BIRD_X + BIRD_SIZE + 10, birdY + BIRD_SIZE / 2);
+            ctx.lineTo(BIRD_X + BIRD_SIZE, birdY + BIRD_SIZE / 2 + 5);
+            ctx.fill();
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = '#008000'; 
+            ctx.strokeStyle = '#005000'; 
+            ctx.lineWidth = 3;
+
+            for (let i = 0; i < pipes.length; i++) {
+                const p = pipes[i];
+                
+                // Yuqori quvur
+                ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
+                ctx.strokeRect(p.x, 0, PIPE_WIDTH, p.topHeight);
+                
+                // Pastki quvur
+                ctx.fillRect(p.x, p.topHeight + PIPE_GAP, PIPE_WIDTH, canvas.height - (p.topHeight + PIPE_GAP));
+                ctx.strokeRect(p.x, p.topHeight + PIPE_GAP, PIPE_WIDTH, canvas.height - (p.topHeight + PIPE_GAP));
+
+                // Quvurlar "Shlyapasi"
+                ctx.fillStyle = '#3CB371'; 
+                ctx.fillRect(p.x - 5, p.topHeight - 15, PIPE_WIDTH + 10, 15);
+                ctx.strokeRect(p.x - 5, p.topHeight - 15, PIPE_WIDTH + 10, 15);
+                
+                ctx.fillRect(p.x - 5, p.topHeight + PIPE_GAP, PIPE_WIDTH + 10, 15);
+                ctx.strokeRect(p.x - 5, p.topHeight + PIPE_GAP, PIPE_WIDTH + 10, 15);
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 30px Arial';
+            // Valyuta nomi USDT ga o'zgartirildi
+            ctx.fillText(`USDT: ${currentUSDT.toFixed(5)}`, 10, 40); 
+            
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(`O'tishlar: ${score}`, 10, 70); 
+        }
+
+        function createPipe() {
+            const minHeight = 60;
+            const maxHeight = canvas.height - PIPE_GAP - minHeight;
+            const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+            
+            pipes.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                passed: false 
+            });
+        }
+
+        function updateGame() {
+            if (isGameOver) return;
+
+            birdVelocity += GRAVITY;
+            birdY += birdVelocity;
+
+            const BIRD_X = 50;
+
+            for (let i = 0; i < pipes.length; i++) {
+                const p = pipes[i];
+                p.x -= PIPE_SPEED; 
+
+                // USDT qo'shish (USDT_PER_PIPE o'zgarmasidan foydalaniladi)
+                if (p.x + PIPE_WIDTH < BIRD_X && !p.passed) {
+                    score++;
+                    currentUSDT += USDT_PER_PIPE; 
+                    p.passed = true;
+                }
+
+                // To'qnashuv
+                if (
+                    BIRD_X + BIRD_SIZE > p.x && BIRD_X < p.x + PIPE_WIDTH
+                ) {
+                    if (birdY < p.topHeight || birdY + BIRD_SIZE > p.topHeight + PIPE_GAP) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            if (birdY + BIRD_SIZE > canvas.height || birdY < 0) {
+                gameOver();
+                return;
+            }
+
+            pipes = pipes.filter(p => p.x + PIPE_WIDTH > 0);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            updateGame();
+            drawPipes();
+            drawBird();
+            drawScore();
+
+            if (!isGameOver) {
+               requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(pipeInterval); 
+            
+            saveUserScore().then(() => {
+                 messageElement.style.display = 'flex';
+                 // Valyuta nomi USDT ga o'zgartirildi
+                 messageElement.innerHTML = `O'yin tugadi! Siz **${score}** quvurdan o'tdingiz.<br>Jami USDT: **${currentUSDT.toFixed(4)}**<br><button onclick="startGame()">Qayta boshlash</button>`;
+            });
+        }
+
+        function jump() {
+            if (isGameOver) {
+                if (messageElement.style.display === 'flex') {
+                    startGame(); 
+                }
+                return;
+            }
+            birdVelocity = JUMP_POWER;
+        }
+
+        /**
+         * Reklamani ko'rsatadi va muvaffaqiyatli tugagach o'yinni boshlaydi.
+         * Agar reklama chiqmasa, o'yin boshlanmaydi va qayta urinish taklif qilinadi.
+         */
+        function startAdAndGame() {
+            // Reklama chiqishi haqida xabar berish
+            messageElement.style.display = 'flex';
+            messageElement.innerHTML = `<span>Reklama yuklanmoqda... Iltimos kuting.</span>`;
+            
+            // Reklamani ko'rsatish
+            AdController.show().then((result) => {
+                // Reklama muvaffaqiyatli yakunlandi yoki yopildi
+                console.log("Reklama holati:", result.done ? "Muvaffaqiyatli yakunlandi/Yopildi" : "Yakunlanmadi");
+                // Muvaffaqiyatli bo'lsa, o'yinni boshlash
+                _actuallyStartGame(); 
+
+            }).catch((result) => {
+                // Reklama yuklanmadi yoki xato yuz berdi (Endi o'yin boshlanmaydi)
+                console.error("Reklama xatosi:", result);
+                
+                // Qayta urinish xabarini ko'rsatish
+                messageElement.innerHTML = `
+                    <span>Reklama yuklanmadi!</span>
+                    <p style="font-size: 20px; color: #FF6347;">Iltimos, internetingizni tekshiring yoki qayta urining.</p>
+                    <button onclick="startGame()">Qayta Urinish</button>
+                    <p style="font-size: 16px; margin-top: 10px;">(Yoki Ekranga/Space tugmasiga bosing)</p>
+                `;
+            });
+        }
+        
+        /**
+         * O'yinning haqiqiy boshlanish mantiqi
+         */
+        function _actuallyStartGame() {
+            isGameOver = false;
+            score = 0; 
+            birdY = canvas.height / 2;
+            birdVelocity = 0;
+            pipes = [];
+            
+            messageElement.style.display = 'none';
+
+            if (pipeInterval) clearInterval(pipeInterval); 
+            pipeInterval = setInterval(createPipe, 1800); 
+
+            gameLoop();
+        }
+
+        function startGame() {
+            // Faqat balans yuklangan bo'lsa va o'yin tugagan bo'lsa reklama orqali boshlaymiz
+            if (messageElement.innerHTML.includes('Yuklanmoqda') || !isGameOver) return;
+
+            startAdAndGame();
+        }
+
+        // === Event Listenerlar ===
+        canvas.addEventListener('click', jump);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                jump();
+                e.preventDefault(); 
+            }
+        });
+
+        // Sahifa yuklanganda Firebase'dan balni yuklash
+        window.onload = loadUserScore;
+    </script>
+</body>
+</html>
