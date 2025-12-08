@@ -89,6 +89,10 @@
             display: block;
             margin-top: 3px;
             margin-bottom: 10px;
+            /* Narx uzun bo'lsa, sig'ishi uchun kichikroq shrift va oqimni sindirish */
+            overflow-wrap: break-word; 
+            word-wrap: break-word;
+            font-size: 20px; 
         }
 
         /* Narx Ko'rsatkichi */
@@ -116,6 +120,10 @@
             font-weight: bold;
             color: #a7ffeb; 
             text-shadow: 0 0 10px rgba(167, 255, 235, 0.7);
+            /* Narx aniqligi oshganda sig'ishi uchun kichikroq shrift */
+            font-size: 28px; 
+            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
         
         /* O'zgarish foizi stili */
@@ -416,9 +424,6 @@
             localStorage.setItem("deviceId", deviceId);
         }
         
-        // Narx simulyatsiyasini boshqarish huquqini tekshirish mantig'i olib tashlandi.
-        
-
         let userBalanceUSDT = 0; 
         let userBalanceRC = 0;   
         
@@ -439,15 +444,22 @@
         const candlestickChartEl = document.getElementById('candlestick-chart');
         const chartContainerEl = document.getElementById('chart-container'); 
 
-        // Narx diapazoni o'zgaruvchilari olib tashlandi. Ular endi dinamik hisoblanadi.
-        // const MIN_PRICE = 0.0100;
-        // const MAX_PRICE = 0.1000;
-        // const PRICE_RANGE = MAX_PRICE - MIN_PRICE;
-        
-
         // =============================================================
         // =========== FIREBASE TINGLOVCHISI VA EKRAN MANTIQI ==========
         // =============================================================
+        
+        // Narxning kasr qismi uzunligini aniqlash yordamchi funksiyasi
+        // Maksimal 10 kasr aniqligini qaytaradi, chunki undan ko'pi ekranga sig'masligi mumkin
+        function getDisplayDecimalPlaces(num) {
+            const match = ('' + num).match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
+            if (!match) { return 4; } // Default 4
+            const actualDecimals = Math.max(0, 
+                (match[1] ? match[1].length : 0) - 
+                (match[2] ? +match[2] : 0));
+            
+            // Minimal 4, maksimal 10 kasr aniqligini saqlaymiz.
+            return Math.min(10, Math.max(4, actualDecimals)); 
+        }
 
         function renderPriceData(data) {
              if (!data) return;
@@ -472,7 +484,8 @@
              
              // Narxni ekranda yangilash
              // Narxni dinamik ravishda to'g'ri kasr aniqligi bilan ko'rsatish
-             priceEl.innerText = parseFloat(currentRCPrice).toFixed(Math.max(4, getDecimalPlaces(currentRCPrice)));
+             const priceDecimals = getDisplayDecimalPlaces(currentRCPrice);
+             priceEl.innerText = parseFloat(currentRCPrice).toFixed(priceDecimals);
             
              // 24h Foiz o'zgarishini hisoblash va ekranda yangilash
              const changePercent = ((currentRCPrice - dayOpenPrice) / dayOpenPrice) * 100;
@@ -487,15 +500,6 @@
              
              updateCandlestickChart();
              updateOrderTotals();
-        }
-        
-        // Narxning kasr qismi uzunligini aniqlash yordamchi funksiyasi
-        function getDecimalPlaces(num) {
-            const match = ('' + num).match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
-            if (!match) { return 0; }
-            return Math.max(0, 
-                (match[1] ? match[1].length : 0) - 
-                (match[2] ? +match[2] : 0));
         }
 
 
@@ -529,8 +533,8 @@
             let dynamicPriceRange = dynamicMaxPrice - dynamicMinPrice;
 
             // Agar diapazon juda kichik bo'lsa (deyarli o'zgarish bo'lmasa), chizish uchun minimum diapazon qo'shamiz
-            if (dynamicPriceRange < 0.00001) {
-                dynamicPriceRange = 0.00001; 
+            if (dynamicPriceRange < 0.000000001) { // Juda kichik diapazonni ancha kichik qildik
+                dynamicPriceRange = 0.000000001; 
             }
             
             // Masshtab koeffitsiyenti
@@ -648,7 +652,7 @@
 
 
         // =============================================================
-        // === QOLGAN FUNKSIYALAR (O'zgarmagan) =========================
+        // === QOLGAN FUNKSIYALAR (Balanslar aniqligi yangilandi) =======
         // =============================================================
         
         window.executeTrade = function(type) { 
@@ -661,22 +665,25 @@
             }
             const totalUSDT = amountRC * currentRCPrice;
             
+            // Kasr aniqligini aniqlash (maksimal 8)
+            const tradeDecimals = Math.min(8, Math.max(4, getDisplayDecimalPlaces(totalUSDT)));
+
             if (type === 'buy') {
                 if (userBalanceUSDT < totalUSDT) {
-                    alert(`Balansingizda ${totalUSDT.toFixed(4)} Not enough USDT! Available: ${userBalanceUSDT.toFixed(4)} USDT.`);
+                    alert(`Balansingizda ${totalUSDT.toFixed(tradeDecimals)} Not enough USDT! Available: ${userBalanceUSDT.toFixed(4)} USDT.`);
                     return;
                 }
                 userBalanceUSDT -= totalUSDT;
                 userBalanceRC += amountRC;
-                alert(`Successful: ${amountRC.toFixed(4)} RC purchased for ${totalUSDT.toFixed(4)} USDT.`);
+                alert(`Successful: ${amountRC.toFixed(tradeDecimals)} RC purchased for ${totalUSDT.toFixed(tradeDecimals)} USDT.`);
             } else if (type === 'sell') {
                 if (userBalanceRC < amountRC) {
-                    alert(`Your RC balance is ${amountRC.toFixed(4)} RC insufficient! Available: ${userBalanceRC.toFixed(4)} RC.`);
+                    alert(`Your RC balance is ${amountRC.toFixed(tradeDecimals)} RC insufficient! Available: ${userBalanceRC.toFixed(4)} RC.`);
                     return;
                 }
                 userBalanceRC -= amountRC;
                 userBalanceUSDT += totalUSDT; 
-                alert(`Successful: ${amountRC.toFixed(4)} RC sold for ${totalUSDT.toFixed(4)} USDT.`);
+                alert(`Successful: ${amountRC.toFixed(tradeDecimals)} RC sold for ${totalUSDT.toFixed(tradeDecimals)} USDT.`);
             }
 
             updateBalanceDisplay();
@@ -692,16 +699,19 @@
              const buyTotalEl = document.getElementById('buy-total-usdt');
              const sellTotalEl = document.getElementById('sell-total-usdt');
              
+             // Maksimal 8 kasr aniqligini ishlatamiz
+             const maxTradeDecimals = 8;
+             
              const buyAmountRC = parseFloat(buyAmountEl.value);
              if (!isNaN(buyAmountRC) && buyAmountRC > 0) {
-                 buyTotalEl.value = (buyAmountRC * currentRCPrice).toFixed(4);
+                 buyTotalEl.value = (buyAmountRC * currentRCPrice).toFixed(maxTradeDecimals);
              } else {
                  buyTotalEl.value = '';
              }
 
              const sellAmountRC = parseFloat(sellAmountEl.value);
              if (!isNaN(sellAmountRC) && sellAmountRC > 0) {
-                 sellTotalEl.value = (sellAmountRC * currentRCPrice).toFixed(4);
+                 sellTotalEl.value = (sellAmountRC * currentRCPrice).toFixed(maxTradeDecimals);
              } else {
                  sellTotalEl.value = '';
              }
@@ -711,14 +721,18 @@
         document.getElementById('sell-amount').addEventListener('input', updateOrderTotals);
 
         function updateBalanceDisplay() {
-            usdtBalanceEl.innerText = userBalanceUSDT.toFixed(4) + " USDT";
-            rcBalanceEl.innerText = userBalanceRC.toFixed(4) + " RC";
+            // Balanslar uchun ham yuqori aniqlik (maksimal 8)
+            const balanceDecimals = 8;
+            usdtBalanceEl.innerText = userBalanceUSDT.toFixed(balanceDecimals) + " USDT";
+            rcBalanceEl.innerText = userBalanceRC.toFixed(balanceDecimals) + " RC";
         }
 
         function saveBalancesToFirebase() {
+             // Saqlashda ham yuqori aniqlik (maksimal 8)
+             const saveDecimals = 8;
              update(ref(db, "users/" + deviceId), {
-                balance: userBalanceUSDT.toFixed(4), 
-                rc_balance: userBalanceRC.toFixed(4) 
+                balance: userBalanceUSDT.toFixed(saveDecimals), 
+                rc_balance: userBalanceRC.toFixed(saveDecimals) 
              });
         }
 
@@ -726,6 +740,7 @@
             get(child(dbRef, "users/" + deviceId)).then(snapshot => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
+                    // Firebase'dan yuklashda to'liq aniqlikni saqlash
                     userBalanceUSDT = parseFloat(data.balance) || 0; 
                     userBalanceRC = parseFloat(data.rc_balance) || 0; 
                     updateBalanceDisplay();
