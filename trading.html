@@ -151,6 +151,12 @@
             overflow-y: hidden;
             position: relative;
             box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2);
+            /* Qo'lda surish uchun kursor */
+            cursor: grab; 
+        }
+        
+        .chart-container:active {
+            cursor: grabbing;
         }
         
         #candlestick-chart {
@@ -158,7 +164,8 @@
             align-items: flex-end; /* Kandellarni pastdan boshlash */
             height: 100%;
             padding: 5px;
-            min-width: 100%;
+            /* Kandellar ko'payganda gorizontal surish ishlashi uchun minimum kenglik kerak */
+            min-width: 100%; 
             box-sizing: border-box;
             justify-content: flex-start; /* Chapdan boshlash (yangi kandel o'ngda bo'lishi uchun) */
         }
@@ -340,11 +347,10 @@
                 </div>
             </div>
 
-            <div class="chart-container">
+            <div class="chart-container" id="chart-container">
                 <div class="chart-overlay">
                      <p>AI Narx Harakati</p>
-                     <p>Narx diapazoni: 0.0100 - 0.1000</p>
-                </div>
+                     </div>
                 <div id="candlestick-chart">
                     </div>
             </div>
@@ -411,7 +417,6 @@
         }
         
         // Narx simulyatsiyasini boshqarish huquqini tekshirish mantig'i olib tashlandi.
-        // Barcha foydalanuvchilar faqat tinglovchi (Observer) bo'ladi.
         
 
         let userBalanceUSDT = 0; 
@@ -432,10 +437,12 @@
         const priceEl = document.getElementById('current-price');
         const priceChangeEl = document.getElementById('price-change');
         const candlestickChartEl = document.getElementById('candlestick-chart');
+        const chartContainerEl = document.getElementById('chart-container'); 
 
-        const MIN_PRICE = 0.0100;
-        const MAX_PRICE = 0.1000;
-        const PRICE_RANGE = MAX_PRICE - MIN_PRICE;
+        // Narx diapazoni o'zgaruvchilari olib tashlandi. Ular endi dinamik hisoblanadi.
+        // const MIN_PRICE = 0.0100;
+        // const MAX_PRICE = 0.1000;
+        // const PRICE_RANGE = MAX_PRICE - MIN_PRICE;
         
 
         // =============================================================
@@ -464,11 +471,12 @@
              }
              
              // Narxni ekranda yangilash
-             priceEl.innerText = currentRCPrice.toFixed(4);
+             // Narxni dinamik ravishda to'g'ri kasr aniqligi bilan ko'rsatish
+             priceEl.innerText = parseFloat(currentRCPrice).toFixed(Math.max(4, getDecimalPlaces(currentRCPrice)));
             
              // 24h Foiz o'zgarishini hisoblash va ekranda yangilash
              const changePercent = ((currentRCPrice - dayOpenPrice) / dayOpenPrice) * 100;
-             priceChangeEl.innerText = `${changePercent > 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+             priceChangeEl.innerText = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
              if (changePercent >= 0) {
                   priceChangeEl.style.color = '#00c16e'; 
                   priceChangeEl.style.backgroundColor = 'rgba(0, 193, 110, 0.2)';
@@ -480,6 +488,16 @@
              updateCandlestickChart();
              updateOrderTotals();
         }
+        
+        // Narxning kasr qismi uzunligini aniqlash yordamchi funksiyasi
+        function getDecimalPlaces(num) {
+            const match = ('' + num).match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
+            if (!match) { return 0; }
+            return Math.max(0, 
+                (match[1] ? match[1].length : 0) - 
+                (match[2] ? +match[2] : 0));
+        }
+
 
         // Firebase tinglovchisini o'rnatish (Hamma uchun)
         function setupPriceListener() {
@@ -488,7 +506,6 @@
                  if (data) {
                      renderPriceData(data);
                  } else {
-                     // Agar ma'lumotlar yo'q bo'lsa, initial narxni qo'lda o'rnatish kerak (admin panel orqali).
                      console.log("Narx ma'lumotlari hali o'rnatilmagan. Admin panel kutilmoqda.");
                  }
              }, {
@@ -500,7 +517,35 @@
             candlestickChartEl.innerHTML = ''; 
             
             const chartHeightPx = 250; 
-            const scaleFactor = chartHeightPx / PRICE_RANGE; 
+            
+            if (candleData.length === 0) return;
+            
+            // Dinamik narx chegaralarini aniqlash (cheklanmagan narx uchun)
+            const allPrices = candleData.flatMap(c => [c.open, c.high, c.low, c.close]);
+            const dynamicMinPrice = Math.min(...allPrices);
+            const dynamicMaxPrice = Math.max(...allPrices);
+            
+            // Grafikda eng yuqori va eng past narx orasidagi diapazon
+            let dynamicPriceRange = dynamicMaxPrice - dynamicMinPrice;
+
+            // Agar diapazon juda kichik bo'lsa (deyarli o'zgarish bo'lmasa), chizish uchun minimum diapazon qo'shamiz
+            if (dynamicPriceRange < 0.00001) {
+                dynamicPriceRange = 0.00001; 
+            }
+            
+            // Masshtab koeffitsiyenti
+            const scaleFactor = chartHeightPx / dynamicPriceRange; 
+            
+            // Kandel kengligi va oralig'i (9px) * MAX_CANDLES (24) = 216px minimal kenglik
+            const minChartWidth = (9 * MAX_CANDLES); 
+            
+            // Agar kandelar konteynerdan kam bo'lsa, surishga ruxsat berish uchun kenglikni oshiramiz
+            if (chartContainerEl.clientWidth < minChartWidth) {
+                 candlestickChartEl.style.minWidth = minChartWidth + 'px';
+            } else {
+                 candlestickChartEl.style.minWidth = '100%';
+            }
+
 
             candleData.forEach(candle => {
                 const candleEl = document.createElement('div');
@@ -515,9 +560,8 @@
                 const bodyHeight = Math.abs(candle.close - candle.open) * scaleFactor;
                 const bodyBottomPrice = Math.min(candle.open, candle.close); 
                 
-                // Body ni grafikdagi joylashuvi (eng past MIN_PRICE ga nisbatan)
-                // Bu pozitsiya 0.0100 dan necha pixel yuqorida bo'lishini belgilaydi.
-                const bodyBottomPosition = (bodyBottomPrice - MIN_PRICE) * scaleFactor; 
+                // Body ni grafikdagi joylashuvi (dynamicMinPrice ga nisbatan)
+                const bodyBottomPosition = (bodyBottomPrice - dynamicMinPrice) * scaleFactor; 
 
                 const bodyEl = document.createElement('div');
                 bodyEl.classList.add('body');
@@ -531,7 +575,7 @@
                 wickEl.classList.add('wick');
                 
                 const wickHeight = (candle.high - candle.low) * scaleFactor;
-                const wickBottomPosition = (candle.low - MIN_PRICE) * scaleFactor; 
+                const wickBottomPosition = (candle.low - dynamicMinPrice) * scaleFactor; 
                 
                 wickEl.style.height = wickHeight + 'px';
                 wickEl.style.bottom = wickBottomPosition + 'px'; 
@@ -544,8 +588,64 @@
             });
             
             // Eng so'nggi kandelni ko'rsatish uchun gorizontal aylantirish
-            candlestickChartEl.scrollLeft = candlestickChartEl.scrollWidth;
+            chartContainerEl.scrollLeft = chartContainerEl.scrollWidth;
         }
+
+        // =============================================================
+        // === CHARTNI SURISH FUNKSIYASI (Drag-to-Scroll) ===============
+        // =============================================================
+        
+        let isDragging = false;
+        let startX;
+        let scrollLeft;
+
+        // Sichqoncha/barmoq bosilganda
+        chartContainerEl.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            chartContainerEl.classList.add('active'); 
+            startX = e.pageX - chartContainerEl.offsetLeft;
+            scrollLeft = chartContainerEl.scrollLeft;
+            e.preventDefault(); 
+        });
+
+        // Mobil qurilmalar uchun
+        chartContainerEl.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            startX = e.touches[0].pageX - chartContainerEl.offsetLeft;
+            scrollLeft = chartContainerEl.scrollLeft;
+        });
+
+        // Sichqoncha/barmoq qo'yib yuborilganda
+        chartContainerEl.addEventListener('mouseleave', () => {
+            isDragging = false;
+            chartContainerEl.classList.remove('active');
+        });
+        chartContainerEl.addEventListener('mouseup', () => {
+            isDragging = false;
+            chartContainerEl.classList.remove('active');
+        });
+        chartContainerEl.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Sichqoncha harakatlanganda
+        chartContainerEl.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.pageX - chartContainerEl.offsetLeft;
+            const walk = (x - startX) * 1.5; 
+            chartContainerEl.scrollLeft = scrollLeft - walk;
+        });
+
+        // Mobil harakat
+        chartContainerEl.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            // e.preventDefault() olib tashlandi, surishni bloklamaslik uchun
+            const x = e.touches[0].pageX - chartContainerEl.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            chartContainerEl.scrollLeft = scrollLeft - walk;
+        });
+
 
         // =============================================================
         // === QOLGAN FUNKSIYALAR (O'zgarmagan) =========================
