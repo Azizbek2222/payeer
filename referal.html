@@ -351,7 +351,8 @@ async function loadReferrals() {
     // YANGI: Claim tugmasi holatini boshqarish
     const claimBtn = document.getElementById("claim-bonus-btn");
     if (claimBtn) { // Tugma mavjudligini tekshirish
-        if (totalBonus > 0.0001) { // Kichik qiymatlarni ham tekshirish
+        // totalBonus ning noldan katta ekanligini tekshirish. Juda kichik, lekin 0 dan katta qiymatlar uchun ham ishlashini ta'minlaydi.
+        if (totalBonus > 0) { 
             claimBtn.disabled = false;
             claimBtn.innerText = "Bonusni Balansga O'tkazish";
             claimBtn.style.backgroundColor = "#FF9800"; // Faol holat uchun rang
@@ -366,6 +367,7 @@ async function loadReferrals() {
 window.onload = loadReferrals;
 
 </script>
+
 
 </body>
 </html>
