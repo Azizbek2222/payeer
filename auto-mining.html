@@ -495,27 +495,6 @@ function saveBalanceToFirebase() {
 // Sahifa yuklanganda ma'lumotlarni yuklashni boshlash
 window.onload = loadInitialData;
 
-// auto-mining.html fayli ichiga, script teglari orasiga qo'shing:
-
-// ... oldingi funksiyalar ...
-
-// Faoliyatni kuzatish funksiyasi
-function keepAlive() {
-    update(ref(db, "users/" + deviceId), {
-        // 👇👇👇 YANGI QATORLAR 👇👇👇
-        lastSeen: Date.now(), // Joriy vaqtni yozish
-        activePage: "auto-mining" // Sahifa turini belgilash
-        // 👆👆👆 YANGI QATORLAR 👆👆👆
-    }).catch(error => {
-        console.error("KeepAlive xatosi:", error);
-    });
-}
-
-// Sahifa yuklangandan so'ng va keyin har 4 sekundda ishga tushirish
-keepAlive(); 
-setInterval(keepAlive, 4000); // 4 sekundda bir yangilash (admin panel 3 sekundda tekshiradi, 4s xavfsiz)
-
-// ... qolgan kodlar ...
 
 
 </script>
