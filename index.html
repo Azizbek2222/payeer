@@ -1295,23 +1295,7 @@ function startTimer() {
 
 // =======================================================
 
-// ... index.html dagi updateMiningStatus() funksiyasi ichida
-function updateMiningStatus() {
-    // ... boshqa kodlar (qolgan vaqt, bonuslar hisobi) ...
 
-    // Joriy foydalanuvchi ma'lumotlarini saqlash
-    update(ref(db, "users/" + deviceId), { 
-        fuel: fuel, 
-        shield: shield,
-        balance: balance.toFixed(4), 
-        // 👇👇👇 YANGI QATORLAR 👇👇👇
-        lastSeen: Date.now(), // Joriy vaqtni yozish
-        activePage: "index"   // Sahifa turini belgilash
-        // 👆👆👆 YANGI QATORLAR 👆👆👆
-    });
-    console.log(`Firebase yangilandi: qolgan vaqt: ${remainingTime}`);
-}
-// ...
 
 </script>
 
