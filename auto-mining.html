@@ -182,6 +182,22 @@ body {
     color: #ffeb3b; /* Yorqin sariq */
 }
 
+/* === YANGI QO'SHILGAN STIL: ADMIN XABARI UCHUN === */
+.miner-control-message {
+    background: #e64a19; /* Qizil/to'q sariq fon */
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    border: 2px solid #ff5722;
+    width: 90%;
+    max-width: 350px;
+    text-align: center;
+    box-shadow: 0 0 15px rgba(255, 87, 34, 0.7);
+}
+/* ================================================== */
+
 
 /* Asosiy Tugma */
 .toggle-btn {
@@ -295,11 +311,14 @@ body {
         <div class="balance-value" id="balance-value">Loading...</div>
     </div>
     
+    <div class="miner-control-message" id="control-message" style="display: none;">
+        Ma'muriy xabar shu yerda chiqadi.
+    </div>
     <button class="toggle-btn" id="mining-toggle-btn" onclick="toggleMining()">
         Start Auto Mining 🚀
     </button>
     
-    <div class="miner-status-box">
+    <div class="miner-status-box" id="miner-status-box">
         <div class="status-title">Auto Mining Status</div>
         <div class="status-value" id="mining-status">Stopped</div>
         
@@ -397,6 +416,9 @@ const progressValueEl = document.getElementById("progress-value");
 // Global Stats elementlari
 const onlineUsersCountEl = document.getElementById("online-users-count");
 const totalMinedUsdEl = document.getElementById("total-mined-usd");
+// === YANGI ELEMENT: ADMIN XABARI ===
+const controlMessageEl = document.getElementById("control-message");
+const minerStatusBoxEl = document.getElementById("miner-status-box");
 
 
 let AdController = null; 
@@ -576,6 +598,59 @@ function listenForGlobalStats() {
 }
 
 
+// === YANGI FUNKSIYALAR: ADMIN BOSHQARUVINI QO'SHISH ===
+
+/**
+ * Admin panelidan kelgan boshqaruv xabarini tinglaydi va unga javob beradi.
+ */
+function listenForAdminControl() {
+    onValue(ref(db, "stats/mining_control"), (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // console.log("Admin control data received:", data);
+            handleMiningControl(data.status, data.message);
+        } else {
+             // Agar tugun o'chirilgan bo'lsa (default holat - ishlashi kerak)
+             handleMiningControl('running', ''); 
+        }
+    });
+}
+
+/**
+ * Mining statusini va interfeysni admin xabariga ko'ra yangilaydi.
+ * @param {string} status - 'running' yoki 'stopped'
+ * @param {string} message - Foydalanuvchiga ko'rsatiladigan xabar
+ */
+function handleMiningControl(status, message) {
+    if (status === 'stopped') {
+        // 1. Miningni to'xtatish (agar ishlayotgan bo'lsa)
+        if (miningInterval) {
+            stopMining(false); // Avtomatik to'xtatish
+            saveBalanceToFirebase(); // Balansni saqlash
+        }
+
+        // 2. Tugmalarni va Mining Statusni yashirish
+        miningToggleBtn.style.display = 'none';
+        minerStatusBoxEl.style.display = 'none'; 
+        
+        // 3. Xabarni ko'rsatish
+        controlMessageEl.innerText = message || "Ma'mur tomonidan to'xtatildi.";
+        controlMessageEl.style.display = 'block';
+
+    } else { // status === 'running'
+        // 1. Tugmalarni va Mining Statusni ko'rsatish
+        miningToggleBtn.style.display = 'block';
+        minerStatusBoxEl.style.display = 'block';
+        
+        // 2. Xabarni yashirish
+        controlMessageEl.style.display = 'none';
+        
+        // **Eslatma:** Miningni avtomatik ravishda qayta boshlamaymiz, foydalanuvchi "Start" tugmasini bosishi kerak.
+    }
+}
+// === YANGI FUNKSIYALAR YAKUNI ===
+
+
 function loadInitialData() {
     get(child(dbRef, "users/" + deviceId)).then(snapshot => {
         if (snapshot.exists()) {
@@ -587,12 +662,18 @@ function loadInitialData() {
             
             initializeAdsgram();
             listenForGlobalStats();
+            // === YANGI QO'SHILGAN FUNKSIYA CHAQIRUVI ===
+            listenForAdminControl(); 
+            // ===========================================
         } else {
             currentBalance = 0;
             saveBalanceToFirebase().then(() => {
                 balanceValueEl.innerText = currentBalance.toFixed(6) + " usdt";
                 initializeAdsgram();
                 listenForGlobalStats();
+                // === YANGI QO'SHILGAN FUNKSIYA CHAQIRUVI ===
+                listenForAdminControl(); 
+                // ===========================================
             });
         }
     }).catch(error => {
