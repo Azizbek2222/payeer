@@ -369,10 +369,10 @@ if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initD
 // ==========================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-// onValue va set qo'shildi
 import { getDatabase, ref, get, child, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 // === FIREBASE KONFIGURATSIYASI (Realtime Database ga mos) ===
+// DIQQAT: BULARNI O'ZINGIZNING KONFIGURATSIYANGIZ BILAN ALMASHTIRING!
 const firebaseConfig = {
   apiKey: "AIzaSyDIeG8dVbm0Yk7FR1hPzrBoD7rgDKWAFoY",
   authDomain: "user1111-c84a0.firebaseapp.com",
@@ -511,7 +511,7 @@ async function updateMining() {
 function startMining() {
     if (miningInterval) return; 
     
-    // === TO'G'IRLASH: ADMIN BOSHQARUVINI TEKSHIRISH (Guard Clause) ===
+    // === ADMIN BOSHQARUVINI TEKSHIRISH (Guard Clause) ===
     if (isAdminStopped) {
         console.log("Mining blocked by Admin Control. Cannot start.");
         // UI ni admin to'xtatgan holatda ushlab turish
@@ -644,6 +644,11 @@ function handleMiningControl(status, message) {
         
         // 2. Xabarni yashirish
         controlMessageEl.style.display = 'none'; 
+        
+        // Agar avtomatik to'xtatilgan bo'lsa va admin qayta ishga tushirsa, miningni ham ishga tushiramiz
+        if (miningInterval === null && !isMiningPausedForAd) {
+            // startMining(); // Foydalanuvchiga o'zi boshlash imkonini qoldiramiz
+        }
     }
 }
 // === FUNKSIYALAR YAKUNI ===
