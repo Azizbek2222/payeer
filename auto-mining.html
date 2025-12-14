@@ -154,6 +154,35 @@ body {
     color: #ff5722; /* To'q sariq */
 }
 
+/* Yenggi qo'shilgan Global Stats Bloki */
+.global-stats-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(20, 50, 80, 0.7);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid #ffeb3b; /* Sariq chegara */
+    box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+    width: 90%;
+}
+.stat-item {
+    flex-basis: 48%; /* Ikki ustun uchun joylashuv */
+    text-align: center;
+}
+.stat-title {
+    font-size: 12px;
+    color: #e0f7fa;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+.stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffeb3b; /* Yorqin sariq */
+}
+
+
 /* Asosiy Tugma */
 .toggle-btn {
     padding: 18px 35px;
@@ -250,6 +279,17 @@ body {
 
 <div class="main-content">
     
+    <div class="global-stats-box">
+        <div class="stat-item">
+            <div class="stat-title">Online People 🧑‍🚀</div>
+            <div class="stat-value" id="online-users-count">...</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-title">Total Mined USD ⛏️</div>
+            <div class="stat-value" id="total-mined-usd">...</div>
+        </div>
+    </div>
+    
     <div class="balance-display">
         <div class="balance-title">Current Balance</div>
         <div class="balance-value" id="balance-value">Loading...</div>
@@ -284,7 +324,8 @@ body {
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, get, child, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+// onValue va set qo'shildi
+import { getDatabase, ref, get, child, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 // === FIREBASE KONFIGURATSIYASI (Index.html dagi bilan bir xil) ===
 const firebaseConfig = {
@@ -317,11 +358,19 @@ let currentBalance = 0;
 let miningInterval = null;
 let earnedSinceLastAd = 0; // Reklamadan keyin yig'ilgan pul
 
+// === YANGI GLOBAL STATS O'ZGARUVCHILARI ===
+let totalMined = 0; // Jami ishlangan pulni saqlash
+let onlineUsers = 0; // Online foydalanuvchilar soni
+
 // === DOM ELEMENTLARI ===
 const balanceValueEl = document.getElementById("balance-value");
 const miningToggleBtn = document.getElementById("mining-toggle-btn");
 const miningStatusEl = document.getElementById("mining-status");
 const progressValueEl = document.getElementById("progress-value");
+// YANGI: Global Stats elementlari
+const onlineUsersCountEl = document.getElementById("online-users-count");
+const totalMinedUsdEl = document.getElementById("total-mined-usd");
+
 
 let AdController = null; 
 
@@ -365,10 +414,16 @@ async function updateMining() {
     // 2. Balansni yangilash (joriy sessiya uchun)
     currentBalance += MINING_REWARD_PER_SECOND;
     
+    // YANGI: Umumiy qazib olingan pulni yangilash (lokal)
+    totalMined += MINING_REWARD_PER_SECOND; 
+    
     // 3. Ekranni yangilash
     balanceValueEl.innerText = currentBalance.toFixed(6) + " usdt";
     progressValueEl.innerText = `${earnedSinceLastAd.toFixed(6)} / ${AD_TRIGGER_AMOUNT.toFixed(6)} USDT`;
     
+    // YANGI: Umumiy qazib olingan pulni ekranda yangilash
+    totalMinedUsdEl.innerText = totalMined.toFixed(4) + " $";
+
     // 4. Reklama triggerini tekshirish
     if (earnedSinceLastAd >= AD_TRIGGER_AMOUNT) {
         
@@ -377,7 +432,7 @@ async function updateMining() {
         
         miningStatusEl.innerText = "Reward reached! Saving balance... 💰";
         
-        // Pulni Firebase'ga saqlash
+        // Pulni Firebase'ga saqlash (shaxsiy balans va global stat)
         await saveBalanceToFirebase();
         
         // Reklamani ko'rsatish
@@ -407,6 +462,9 @@ function startMining() {
 
     // Har bir sekundda yangilash
     miningInterval = setInterval(updateMining, MINING_INTERVAL_MS);
+    
+    // YANGI: Foydalanuvchi online holatini saqlash
+    set(ref(db, "online_users/" + deviceId), true);
 
     // Interfeysni yangilash
     miningToggleBtn.innerText = "Stop Auto Mining ⏸️";
@@ -424,6 +482,12 @@ function stopMining(userInitiated = true) {
         clearInterval(miningInterval);
         miningInterval = null;
     }
+    
+    // YANGI: Foydalanuvchi online holatini o'chirish
+    if (userInitiated) {
+        set(ref(db, "online_users/" + deviceId), null);
+    }
+
 
     // Interfeysni yangilash
     miningToggleBtn.innerText = "Start Auto Mining 🚀";
@@ -438,7 +502,7 @@ window.toggleMining = function() {
         
         // Mining to'xtatilganda qolgan pulni saqlash
         if (earnedSinceLastAd > 0) {
-            // Balansni yangilash va Firebase'ga saqlash
+            // Balansni yangilash va Firebase'ga saqlash (va global statni ham)
             saveBalanceToFirebase().then(() => {
                  alert(`Mining stopped. ${earnedSinceLastAd.toFixed(6)} USDT added to your balance.`);
                  earnedSinceLastAd = 0; // Saqlangan pulni 0 ga qaytarish
@@ -451,6 +515,27 @@ window.toggleMining = function() {
 };
 
 // === FIREBASE MULOQOTI ===
+
+// YANGI: Global statistikani doimiy tinglash (real-time)
+function listenForGlobalStats() {
+    // Online Users
+    onValue(ref(db, "online_users"), (snapshot) => {
+        onlineUsers = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+        onlineUsersCountEl.innerText = onlineUsers;
+    });
+    
+    // Total Mined USD
+    onValue(ref(db, "stats/total_mined_usd"), (snapshot) => {
+        if (snapshot.exists()) {
+            totalMined = parseFloat(snapshot.val()) || 0;
+            totalMinedUsdEl.innerText = totalMined.toFixed(4) + " $";
+        } else {
+            totalMined = 0;
+            totalMinedUsdEl.innerText = "0.0000 $";
+        }
+    });
+}
+
 
 function loadInitialData() {
     get(child(dbRef, "users/" + deviceId)).then(snapshot => {
@@ -465,12 +550,16 @@ function loadInitialData() {
             
             // Foydalanuvchi ma'lumotlarini yuklagandan so'ng, Adsgramni ishga tushirish
             initializeAdsgram();
+            // YANGI: Global statslarni tinglashni boshlash
+            listenForGlobalStats();
         } else {
             // Yangi foydalanuvchi: Bazaga yozishdan oldin balansni yangilash
             currentBalance = 0;
             saveBalanceToFirebase().then(() => {
                 balanceValueEl.innerText = currentBalance.toFixed(6) + " usdt";
                 initializeAdsgram();
+                // YANGI: Global statslarni tinglashni boshlash
+                listenForGlobalStats();
             });
         }
     }).catch(error => {
@@ -480,13 +569,23 @@ function loadInitialData() {
 }
 
 function saveBalanceToFirebase() {
-    // Balansni Firebase'ga saqlash
+    // 1. Shaxsiy Balansni yangilash
     const newTotalBalance = currentBalance;
     
-    return update(ref(db, "users/" + deviceId), {
-        balance: newTotalBalance.toFixed(4), // Index.html dagi kabi 4 xonali aniqlikda saqlash
-    }).then(() => {
-        console.log(`Firebase updated. Balance: ${newTotalBalance.toFixed(4)}`);
+    // 2. Global statni yangilash
+    // Qolgan pulni oldingi umumiy pulga qo'shib, yangi summani olish
+    const amountToAdd = earnedSinceLastAd;
+    const newGlobalTotal = totalMined + amountToAdd;
+    
+    // Ikkala o'zgarishni ham bir vaqtda (yoki ketma-ket) Firebase'ga yozish
+    const updates = {};
+    updates["users/" + deviceId + "/balance"] = newTotalBalance.toFixed(4); // Shaxsiy balans
+    updates["stats/total_mined_usd"] = newGlobalTotal.toFixed(4); // Global stat
+    
+    return update(dbRef, updates).then(() => {
+        console.log(`Firebase updated. Balance: ${newTotalBalance.toFixed(4)}, Global Total: ${newGlobalTotal.toFixed(4)}`);
+        // Global totalni lokal o'zgaruvchida yangilash
+        totalMined = newGlobalTotal;
     }).catch(error => {
         console.error("Firebase saving error:", error);
     });
@@ -495,7 +594,12 @@ function saveBalanceToFirebase() {
 // Sahifa yuklanganda ma'lumotlarni yuklashni boshlash
 window.onload = loadInitialData;
 
-
+// Sahifani tark etishdan oldin online holatini o'chirish
+window.onbeforeunload = function() {
+    if (miningInterval) {
+         set(ref(db, "online_users/" + deviceId), null);
+    }
+};
 
 </script>
 
