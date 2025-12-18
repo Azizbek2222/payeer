@@ -29,7 +29,7 @@ const userId = getUserId();
 const botToken = "8106213930:AAHzObkRHkBIQObLxMPW-Ctl0WMFbmpupmI";
 
 // REKLAMA QISMI: blockId aniq "int-19304" ko'rinishida bo'lishi shart
-const AdController = window.Adsgram ? window.Adsgram.init({ blockId: "int-19304" }) : null;
+const AdController = window.Adsgram ? window.Adsgram.init({ blockId: "int-19356" }) : null;
 
 function getReferrerId() {
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.start_param) {
