@@ -104,10 +104,7 @@
                         return;
                     }
 
-                    // Raw manzilni olish
                     const walletAddress = tonConnectUI.account.address;
-
-                    // Bazaga yozish
                     const requestListRef = ref(db, 'withdraw_requests');
                     const newRequestRef = push(requestListRef);
                     await set(newRequestRef, {
@@ -118,17 +115,13 @@
                         date: new Date().toLocaleString()
                     });
 
-                    // Balansdan ayirish
                     await update(userRef, { balance: balance - amount });
                     
                     msg.innerText = "✅ Request sent successfully!";
                     msg.className = "text-center text-green-400 font-medium";
                     amountInput.value = "";
-                } else {
-                    msg.innerText = "❌ User not found!";
                 }
             } catch (err) {
-                console.error(err);
                 msg.innerText = "❌ Error: " + err.message;
             }
         };
