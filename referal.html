@@ -1,373 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
-    <meta name="viewport" content="width-device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
-    <title>Referral - Rocket Mining</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referal Tizimi</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #8A2BE2, #6A5ACD); /* Binafsha gradient */
-            padding: 10px;
-            margin: 0;
-            min-height: 100vh;
-            color: #fff;
-            box-sizing: border-box;
-        }
-
-        .back-btn {
-        position: absolute; top: 4px; left: 20px;
-        margin-top: 15px;
-        padding: 10px 20px;
-        background: #f0f0f0;
-        color: #007bff;
-        border: 1px solid #007bff;
-        border-radius: 8px;
-        font-size: 14px;
-        cursor: pointer;
-    }
-
-        .container {
-            max-width: 450px;
-            margin: 10px auto;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        h2 {
-            color: #fff;
-            margin-bottom: 20px;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-        }
-        
-        /* Statistik ko'rsatkichlar */
-        .stats-grid {
-            display: flex;
-            justify-content: space-around;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-box {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 15px 10px;
-            flex-grow: 1;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #FFD700; /* Oltin rang */
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #E0E0E0;
-        }
-
-
-        .referral-link-box {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .link-label {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 5px;
-        }
-
-        #referral-link {
-            font-size: 15px;
-            font-weight: bold;
-            color: #333;
-            word-wrap: break-word; 
-        }
-
-        .copy-btn {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            background: linear-gradient(45deg, #007bff, #00a2ff);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .referral-list-title {
-            margin-top: 10px;
-            color: #fff;
-            font-size: 18px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        .referral-list {
-            list-style: none;
-            padding: 0;
-            text-align: left;
-            max-height: 250px; /* Ro'yxatni chegaralash */
-            overflow-y: auto;
-        }
-
-        .referral-item {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-        }
-
-        .referral-item span.status {
-            font-weight: bold;
-            color: #00c16e;
-        }
-        
-        .no-referrals {
-            color: #E0E0E0;
-            margin-top: 20px;
-            text-align: center;
-        }
+        body { background: #1a1a2e; color: white; font-family: sans-serif; }
+        .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; padding: 20px; }
     </style>
 </head>
-<body>
+<body class="p-6">
+    <div class="max-w-md mx-auto space-y-6">
+        <h1 class="text-2xl font-bold text-center text-blue-400">Do'stlarni taklif qiling</h1>
+        
+        <div class="card text-center">
+            <p class="text-gray-400 text-sm mb-4">Har bir referalingiz CLAIM qilganida sizga <span class="text-green-400 font-bold">2% bonus</span> beriladi!</p>
+            
+            <div class="space-y-4">
+                <div class="bg-black/20 p-3 rounded-lg break-all text-[10px] border border-white/5" id="refLink">
+                    Yuklanmoqda...
+                </div>
+                
+                <button onclick="copyLink()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition">
+                    HAVOLANI NUSXALASH
+                </button>
+            </div>
+        </div>
 
-<div class="container">
-    <h2>🤝 Referral Markazi</h2>
-    
-    <div class="stats-grid">
-        <div class="stat-box">
-            <div class="stat-value" id="referral-count">0</div>
-            <div class="stat-label">Taklif qilinganlar</div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="card text-center">
+                <p class="text-xs text-gray-400">Do'stlar</p>
+                <h2 id="refCount" class="text-xl font-bold">0</h2>
+            </div>
+            <div class="card text-center">
+                <p class="text-xs text-gray-400">Jami Bonus</p>
+                <h2 id="totalBonus" class="text-xl font-bold text-green-400">0.0000</h2>
+            </div>
         </div>
-        <div class="stat-box">
-            <div class="stat-value" id="referral-bonus">0.00000 usdt</div>
-            <div class="stat-label">Umumiy daromad (10% mining komissiyasi)</div> 
-            <button class="copy-btn" id="claim-bonus-btn" onclick="claimReferralBonus()" style="margin-top: 15px; background: #FF9800;">Bonusni Balansga O'tkazish</button>
-        </div>
+        
+        <button onclick="window.history.back()" class="w-full text-gray-500 text-sm underline">Orqaga qaytish</button>
     </div>
 
-    <div class="referral-link-box">
-        <div class="link-label">Sizning shaxsiy havolangiz:</div>
-        <div id="referral-link">Yuklanmoqda...</div>
-        <button class="copy-btn" onclick="copyLink()">Havolani nusxalash</button>
-    </div>
-
-    <div class="referral-list-title">👥 Do'stlar Ro'yxati</div>
-    <ul class="referral-list" id="referral-list">
-        <li class="no-referrals">Yuklanmoqda...</li>
-    </ul>
-</div>
-<button class="back-btn" onclick="location.href='index.html'">Orqaga</button>
-
-
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
-    getDatabase, ref, get, set, child, query, orderByChild, equalTo, update // <-- 'update' qo'shildi
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-// === FIREBASE CONFIG ===
-const firebaseConfig = {
-  apiKey: "AIzaSyDIeG8dVbm0Yk7FR1hPzrBoD7rgDKWAFoY",
-  authDomain: "user1111-c84a0.firebaseapp.com",
-  databaseURL: "https://user1111-c84a0-default-rtdb.firebaseio.com",
-  projectId: "user1111-c84a0",
-  storageBucket: "user1111-c84a0.appspot.com",
-  messagingSenderId: "901723757936",
-  appId: "1:901723757936:web:9da0a1c7ec494f4a0c03b5",
-  measurementId: "G-9R8ZQY63B1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const dbRef = ref(db);
-
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-// === DEVICE ID ===
-let deviceId = localStorage.getItem("deviceId");
-if (!deviceId) {
-    deviceId = "user_" + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem("deviceId", deviceId);
-}
-
-// === REFERAL LINK ===
-let botUsername = "rocket_mining_bot";
-const referralLinkEl = document.getElementById("referral-link");
-// --- O'ZGARTIRILGAN QATOR ---
-const referralLink = `https://t.me/${botUsername}/mining?startapp=${deviceId}`;
-// ----------------------------
-referralLinkEl.innerText = referralLink;
-
-
-// Nusxalash
-window.copyLink = function () {
-    navigator.clipboard.writeText(referralLink).then(() => {
-        tg.showAlert("Havola nusxalandi!");
-    });
-};
-
-// === YANGI FUNKSIYA: REFERRAL BONUSNI BALANSGA O'TKAZISH ===
-window.claimReferralBonus = async function () {
-    const claimBtn = document.getElementById("claim-bonus-btn");
-    claimBtn.disabled = true; // Qayta bosishni oldini olish
-    claimBtn.innerText = "Yuklanmoqda...";
-
-    try {
-        // 1. Joriy foydalanuvchi ma'lumotlarini olish
-        const snapshot = await get(child(dbRef, "users/" + deviceId));
-        if (!snapshot.exists()) {
-            tg.showAlert("Xatolik: Foydalanuvchi topilmadi.");
-            claimBtn.disabled = false;
-            claimBtn.innerText = "Bonusni Balansga O'tkazish";
-            return;
+    <script type="module" src="referal.js"></script>
+    <script>
+        function copyLink() {
+            const link = document.getElementById('refLink').innerText;
+            navigator.clipboard.writeText(link);
+            window.Telegram.WebApp.showAlert("Havola nusxalandi!");
         }
-
-        const userData = snapshot.val();
-        // parseFloat() bilan xato bo'lsa 0 qiymatidan foydalanishni ta'minlash
-        const currentBalance = parseFloat(userData.balance) || 0; 
-        const referralBonus = parseFloat(userData.referral_bonus) || 0;
-
-        if (referralBonus <= 0.0001) { // Kichik qiymatlarni ham e'tiborsiz qoldirish
-            tg.showAlert("Balansga o'tkaziladigan bonus mavjud emas.");
-            claimBtn.disabled = false;
-            claimBtn.innerText = "Bonus Mavjud Emas";
-            await loadReferrals(); // Tugma holatini yangilash uchun
-            return;
-        }
-
-        // 2. Hisoblash va yangilash
-        const newBalance = (currentBalance + referralBonus).toFixed(4); // 4 xonali aniqlik
-        const claimedAmount = referralBonus.toFixed(4);
-
-        // 3. Firebase'ni yangilash
-        await update(ref(db, "users/" + deviceId), {
-            balance: newBalance,
-            referral_bonus: "0.0000" // Bonusni nolga tushirish
-        });
-        
-        // 4. Ekranni yangilash
-        // document.getElementById("referral-bonus").innerText = "0.00000 usdt"; // Buni loadReferrals() bajarsin
-        claimBtn.innerText = "Muvaffaqiyatli O'tkazildi!";
-        
-        tg.showAlert(`${claimedAmount} usdt asosiy balansga muvaffaqiyatli qo'shildi!`);
-        
-        // Ma'lumotlar o'zgargani uchun barcha UI elementlarini yangilash
-        await loadReferrals(); 
-
-    } catch (err) {
-        console.error("Bonusni o'tkazishda xatolik:", err);
-        tg.showAlert("Xatolik: Bonusni balansga o'tkazishda muammo yuz berdi.");
-        claimBtn.disabled = false;
-        claimBtn.innerText = "Bonusni Balansga O'tkazish";
-        claimBtn.style.backgroundColor = "#FF9800";
-    }
-};
-// =======================================================
-
-
-// === REFERALLARNI YUKLASH ===
-
-async function loadReferrals() {
-    const referralListEl = document.getElementById("referral-list");
-    referralListEl.innerHTML = '<li class="no-referrals">Yuklanmoqda...</li>';
-
-    let totalReferrals = 0;
-    let totalBonus = 0; 
-
-    try {
-        // 1. Foydalanuvchining ma'lumotlarini yuklash (bonus miqdorini olish uchun)
-        const userSnapshot = await get(child(dbRef, "users/" + deviceId));
-        if (userSnapshot.exists()) {
-            const userData = userSnapshot.val();
-            // referral_bonus ni to'g'ri raqam formatida olish va floatga aylantirish (Tuzatish)
-            totalBonus = parseFloat(userData.referral_bonus) || 0;
-        }
-
-        // 2. Taklif qilingan do'stlar ro'yxatini yuklash
-        const referralsQuery = query(
-            ref(db, "users"),
-            orderByChild("referrerId"),
-            equalTo(deviceId)
-        );
-
-        const snapshot = await get(referralsQuery);
-
-        if (snapshot.exists()) {
-            const users = snapshot.val();
-            const keys = Object.keys(users);
-            totalReferrals = keys.length;
-
-            document.getElementById("referral-count").innerText = totalReferrals;
-            referralListEl.innerHTML = "";
-
-            keys.forEach((key, i) => {
-                const u = users[key];
-                const li = document.createElement("li");
-                li.className = "referral-item";
-
-                li.innerHTML = `
-                    <span>👤 Foydalanuvchi #${i + 1}</span>
-                    <span class="status" style="color: ${u.isMining ? '#00c16e' : '#FFD700'};">${u.isMining ? "Faol" : "Qo'shildi"}</span>
-                `;
-
-                referralListEl.appendChild(li);
-            });
-        } else {
-            document.getElementById("referral-count").innerText = 0;
-            referralListEl.innerHTML = `<li class="no-referrals">Hali referal yo'q.</li>`;
-        }
-    } catch (err) {
-        console.error("Referal yuklanishida xatolik:", err);
-        referralListEl.innerHTML = `<li class="no-referrals" style="color:red;">Ma'lumotlarni yuklashda xatolik.</li>`;
-    }
-
-    // BONUS ko'rsatish (Endi Firebase'dan olingan totalBonus ishlatiladi)
-    // Va doimo usdt ko'rinishida formatlash
-    document.getElementById("referral-bonus").innerText = totalBonus.toFixed(5) + " usdt";
-
-    // YANGI: Claim tugmasi holatini boshqarish
-    const claimBtn = document.getElementById("claim-bonus-btn");
-    if (claimBtn) { // Tugma mavjudligini tekshirish
-        // totalBonus ning noldan katta ekanligini tekshirish. Juda kichik, lekin 0 dan katta qiymatlar uchun ham ishlashini ta'minlaydi.
-        if (totalBonus > 0) { 
-            claimBtn.disabled = false;
-            claimBtn.innerText = "Bonusni Balansga O'tkazish";
-            claimBtn.style.backgroundColor = "#FF9800"; // Faol holat uchun rang
-        } else {
-            claimBtn.disabled = true;
-            claimBtn.innerText = "Bonus Mavjud Emas";
-            claimBtn.style.backgroundColor = "#607D8B"; // O'chirilgan holat uchun rang
-        }
-    }
-}
-
-window.onload = loadReferrals;
-
-</script>
-
-
+    </script>
 </body>
 </html>

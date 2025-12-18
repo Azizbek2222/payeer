@@ -28,6 +28,16 @@ function getUserId() {
 const userId = getUserId();
 const AdController = window.Adsgram.init({ blockId: "int-19304" });
 
+// Referalni aniqlash funksiyasi
+function getReferrerId() {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.start_param) {
+        return "tg_" + window.Telegram.WebApp.initDataUnsafe.start_param;
+    }
+    return null;
+}
+
+const referrerId = getReferrerId();
+
 async function handleClaim() {
     try {
         const result = await AdController.show();
@@ -36,13 +46,51 @@ async function handleClaim() {
             const userRef = ref(db, 'users/' + userId);
             const snapshot = await get(userRef);
             const now = Date.now();
-            
+            const reward = 1.0001;
+            const bonusPercent = 0.02; // 2% bonus
+
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 if (now - data.lastClaim < 30 * 60 * 1000) { alert("Kuting!"); return; }
-                await update(userRef, { balance: (data.balance || 0) + 0.0001, lastClaim: now });
+                
+                // 1. Foydalanuvchining o'ziga balans qo'shish
+                await update(userRef, { 
+                    balance: (data.balance || 0) + reward, 
+                    lastClaim: now 
+                });
+
+                // 2. Taklif qilgan odamga (referrer) 2% bonus berish
+                if (data.invitedBy) {
+                    const bossRef = ref(db, 'users/' + data.invitedBy);
+                    const bossSnap = await get(bossRef);
+                    if (bossSnap.exists()) {
+                        const bossData = bossSnap.val();
+                        const bonusAmount = reward * bonusPercent;
+                        
+                        await update(bossRef, { 
+                            balance: (bossData.balance || 0) + bonusAmount,
+                            referralEarnings: (bossData.referralEarnings || 0) + bonusAmount
+                        });
+                    }
+                }
             } else {
-                await set(userRef, { balance: 0.0001, lastClaim: now });
+                // Yangi foydalanuvchi birinchi marta kirganda
+                await set(userRef, { 
+                    balance: reward, 
+                    lastClaim: now,
+                    invitedBy: referrerId // Kim taklif qilganini saqlash
+                });
+
+                // Taklif qilgan odamning referal sonini oshirish
+                if (referrerId) {
+                    const bossRef = ref(db, 'users/' + referrerId);
+                    const bossSnap = await get(bossRef);
+                    if (bossSnap.exists()) {
+                        await update(bossRef, { 
+                            referralCount: (bossSnap.val().referralCount || 0) + 1 
+                        });
+                    }
+                }
             }
             loadUserData();
         }
