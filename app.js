@@ -18,7 +18,7 @@ const db = getDatabase(app);
 const userId = "user_test_123"; 
 
 // AdsGram Controllerni init qilish
-const AdController = window.Adsgram.init({ blockId: "int-18409" });
+const AdController = window.Adsgram.init({ blockId: "int-19304" });
 
 async function handleClaim() {
     try {
