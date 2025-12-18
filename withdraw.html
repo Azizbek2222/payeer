@@ -32,7 +32,7 @@
             <div>
                 <label class="text-xs text-gray-400 uppercase font-bold ml-1">Amount (TON)</label>
                 <input id="amount" type="number" placeholder="Min: 0.0001" step="0.0001" 
-                    class="w-full bg-black/20 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500 transition-all text-xl font-bold">
+                    class="w-full bg-black/20 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500 transition-all text-xl font-bold text-white">
             </div>
 
             <button id="withdrawBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black shadow-lg shadow-blue-900/20 transition-all active:scale-95 uppercase">
@@ -40,10 +40,6 @@
             </button>
             
             <p id="msg" class="text-center text-sm font-medium"></p>
-        </div>
-
-        <div class="mt-8 text-center text-gray-500 text-xs">
-            <p>Requests will be processed within 24 hours.</p>
         </div>
     </div>
 
@@ -74,13 +70,14 @@
 
         function getUserId() {
             if (webApp.initDataUnsafe?.user) return "tg_" + webApp.initDataUnsafe.user.id;
-            return localStorage.getItem('mining_uid');
+            return localStorage.getItem('mining_uid') || "guest";
         }
 
         const userId = getUserId();
 
         document.getElementById('withdrawBtn').onclick = async () => {
-            const amount = parseFloat(document.getElementById('amount').value);
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value);
             const msg = document.getElementById('msg');
             
             if (!tonConnectUI.connected) {
@@ -95,41 +92,44 @@
                 return;
             }
 
-            const userRef = ref(db, 'users/' + userId);
-            const snapshot = await get(userRef);
-            
-            if (snapshot.exists()) {
-                const balance = snapshot.val().balance || 0;
-                if (balance < amount) {
-                    msg.innerText = "❌ Balans yetarli emas!";
-                    msg.className = "text-center text-red-400 font-medium";
-                    return;
-                }
-
-                // Raw manzilni o'qiladigan formatga o'tkazish
-                let walletAddress = tonConnectUI.account.address;
-                try {
-                    // TON Connect UI orqali formatlangan manzilni olish (agar mavjud bo'lsa)
-                    if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
-                        // Agar SDK o'zi formatlab bermasa, Raw manzil sifatida saqlanadi
-                        walletAddress = tonConnectUI.account.address;
-                    }
-                } catch (e) { console.error(e); }
-
-                const requestRef = push(ref(db, 'withdraw_requests'));
-                await set(requestRef, {
-                    uid: userId,
-                    address: walletAddress, // Raw formatda saqlaymiz, admin panelda o'giramiz
-                    amount: amount,
-                    status: 'pending',
-                    date: new Date().toLocaleString()
-                });
-
-                await update(userRef, { balance: balance - amount });
+            try {
+                const userRef = ref(db, 'users/' + userId);
+                const snapshot = await get(userRef);
                 
-                msg.innerText = "✅ Request accepted!";
-                msg.className = "text-center text-green-400 font-medium";
-                document.getElementById('amount').value = "";
+                if (snapshot.exists()) {
+                    const balance = snapshot.val().balance || 0;
+                    if (balance < amount) {
+                        msg.innerText = "❌ Balans yetarli emas!";
+                        msg.className = "text-center text-red-400 font-medium";
+                        return;
+                    }
+
+                    // Raw manzilni olish
+                    const walletAddress = tonConnectUI.account.address;
+
+                    // Bazaga yozish
+                    const requestListRef = ref(db, 'withdraw_requests');
+                    const newRequestRef = push(requestListRef);
+                    await set(newRequestRef, {
+                        uid: userId,
+                        address: walletAddress,
+                        amount: amount,
+                        status: 'pending',
+                        date: new Date().toLocaleString()
+                    });
+
+                    // Balansdan ayirish
+                    await update(userRef, { balance: balance - amount });
+                    
+                    msg.innerText = "✅ Request sent successfully!";
+                    msg.className = "text-center text-green-400 font-medium";
+                    amountInput.value = "";
+                } else {
+                    msg.innerText = "❌ User not found!";
+                }
+            } catch (err) {
+                console.error(err);
+                msg.innerText = "❌ Error: " + err.message;
             }
         };
     </script>
