@@ -30,7 +30,7 @@
         <div class="glass rounded-3xl p-6 space-y-4">
             <div>
                 <label class="text-xs text-gray-400 uppercase font-bold ml-1">Amount (TON)</label>
-                <input id="amount" type="number" placeholder="Min: 0.01" step="0.001" 
+                <input id="amount" type="number" placeholder="Min: 0.0001" step="0.0001" 
                     class="w-full bg-black/20 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500 transition-all text-xl font-bold">
             </div>
 
@@ -85,8 +85,8 @@
                 return;
             }
 
-            if (isNaN(amount) || amount < 0.001) {
-                msg.innerText = "❌ Minimum must be 0.001 TON";
+            if (isNaN(amount) || amount < 0.0001) {
+                msg.innerText = "❌ Minimum must be 0.0001 TON";
                 msg.className = "text-center text-red-400 font-medium";
                 return;
             }
