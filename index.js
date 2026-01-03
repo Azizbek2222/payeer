@@ -14,87 +14,224 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Reklama controllerlarini sozlash
-let AdsgramController = null;
-if (window.Adsgram) {
-    AdsgramController = window.Adsgram.init({ blockId: "int-19356" }); // Block ID faqat raqam bo'lishi kerak
-}
-
 function getUserId() {
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-        return "tg_" + window.Telegram.WebApp.initDataUnsafe.user.id;
+    let id = "";
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.user) {
+        id = "tg_" + window.Telegram.WebApp.initDataUnsafe.user.id;
+    } else {
+        id = localStorage.getItem('mining_uid') || "user_" + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('mining_uid', id);
     }
-    let id = localStorage.getItem('mining_uid') || "user_" + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('mining_uid', id);
     return id;
 }
 
 const userId = getUserId();
+const botToken = "8106213930:AAHzObkRHkBIQObLxMPW-Ctl0WMFbmpupmI";
+let isNotificationSent = false;
 
-// ASOSIY CLAIM FUNKSIYASI
-async function handleClaim() {
-    const btn = document.getElementById('claimBtn');
-    btn.disabled = true; // Double clickni oldini olish
+// REKLAMA KONTROLLERLARI
+const AdsGramController = window.Adsgram ? window.Adsgram.init({ blockId: "int-19356" }) : null;
+let AdseroController = null;
 
-    // Random tanlash: 0 - AdsGram, 1 - StarAds
-    const randomChoice = Math.floor(Math.random() * 2);
-    let adSuccess = false;
+// Adsero SDK ni yuklanganligini tekshirish
+if (window.Adsero) {
+    AdseroController = window.Adsero;
+} else {
+    console.log("Adsero SDK yuklanmadi");
+}
 
-    try {
-        if (randomChoice === 0 && AdsgramController) {
-            console.log("AdsGram ko'rsatilmoqda...");
-            const result = await AdsgramController.show();
-            if (result.done) adSuccess = true;
-        } else if (window.StarAds) {
-            console.log("StarAds ko'rsatilmoqda...");
-            // StarAds SDK-ingizga qarab show() yoki shunga o'xshash funksiyani ishlating
-            const result = await window.StarAds.show(); 
-            if (result) adSuccess = true;
-        } else {
-            // Agar tanlangan reklama yuklanmasa, zaxira sifatida AdsGramni urinib ko'ramiz
-            if (AdsgramController) {
-                const result = await AdsgramController.show();
-                if (result.done) adSuccess = true;
-            }
+function getReferrerId() {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.start_param) {
+        return "tg_" + window.Telegram.WebApp.initDataUnsafe.start_param;
+    }
+    return null;
+}
+
+const referrerId = getReferrerId();
+
+async function sendTelegramMessage(text) {
+    const chatId = userId.replace("tg_", "");
+    if (!isNaN(chatId)) {
+        try {
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: "HTML"
+                })
+            });
+        } catch (err) {
+            console.error("Telegram xabar yuborishda xatolik:", err);
         }
-
-        if (adSuccess) {
-            await giveReward();
-        } else {
-            window.Telegram.WebApp.showAlert("Reklamani oxirigacha ko'rishingiz kerak!");
-            btn.disabled = false;
-        }
-    } catch (err) {
-        console.error("Reklama xatosi:", err);
-        window.Telegram.WebApp.showAlert("Hozircha reklama mavjud emas. Birozdan so'ng urinib ko'ring.");
-        btn.disabled = false;
     }
 }
 
-async function giveReward() {
-    // Mukofot berish mantiqiy qismi (sizning eski kodingiz)
+async function checkFirstTimeEntry() {
+    const userRef = ref(db, 'users/' + userId);
+    const snapshot = await get(userRef);
+    if (!snapshot.exists()) {
+        const welcomeText = "👋 <b>Welcome!</b>\n\nYou have successfully logged in to the Rocket Mining app. Get rewards every 5 minutes and collect TON! 🚀";
+        await sendTelegramMessage(welcomeText);
+    }
+}
+
+// Adsero reklamasini ko'rsatish funksiyasi
+async function showAdseroAd() {
+    return new Promise((resolve) => {
+        if (!AdseroController) {
+            console.log("Adsero Controller mavjud emas");
+            resolve(false);
+            return;
+        }
+
+        try {
+            AdseroController.showInterstitial(10)
+                .then(() => {
+                    // Reklama muvaffaqiyatli ko'rsatildi
+                    setTimeout(() => {
+                        resolve(true);
+                    }, 1000);
+                })
+                .catch(() => {
+                    console.log("Adsero reklamasi chiqmadi");
+                    resolve(false);
+                });
+        } catch (error) {
+            console.log("Adsero xatosi:", error);
+            resolve(false);
+        }
+    });
+}
+
+// AdsGram reklamasini ko'rsatish funksiyasi
+async function showAdsGramAd() {
+    return new Promise((resolve) => {
+        if (!AdsGramController) {
+            console.log("AdsGram Controller mavjud emas");
+            resolve(false);
+            return;
+        }
+
+        AdsGramController.show()
+            .then(result => {
+                if (result && result.done) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            })
+            .catch(() => {
+                resolve(false);
+            });
+    });
+}
+
+// RANDOM REKLAMA TANLASH VA KO'RSATISH
+async function showRandomAd() {
+    const adTypes = [];
+    
+    // Adsero mavjud bo'lsa qo'shamiz
+    if (AdseroController) {
+        adTypes.push('adsero');
+    }
+    
+    // AdsGram mavjud bo'lsa qo'shamiz
+    if (AdsGramController) {
+        adTypes.push('adsgram');
+    }
+    
+    // Agar hech qaysi reklama mavjud bo'lmasa
+    if (adTypes.length === 0) {
+        window.Telegram.WebApp.showAlert("No ads available at this time. Please try again later.");
+        return false;
+    }
+    
+    // Random reklama tanlash
+    const randomAdType = adTypes[Math.floor(Math.random() * adTypes.length)];
+    
+    if (randomAdType === 'adsero') {
+        console.log("Adsero reklamasi tanlandi");
+        return await showAdseroAd();
+    } else if (randomAdType === 'adsgram') {
+        console.log("AdsGram reklamasi tanlandi");
+        return await showAdsGramAd();
+    }
+    
+    return false;
+}
+
+async function handleClaim() {
+    // Avval reklamani ko'rsatamiz
+    const adResult = await showRandomAd();
+    
+    if (!adResult) {
+        window.Telegram.WebApp.showAlert("You must watch the ad to receive the reward.");
+        return;
+    }
+    
+    // Reklama muvaffaqiyatli ko'rsatilganidan so'ng, mukofotni beramiz
     startRocketAnimation();
     const userRef = ref(db, 'users/' + userId);
     const snapshot = await get(userRef);
     const now = Date.now();
     const reward = 0.0001;
+    const bonusPercent = 0.02;
 
     if (snapshot.exists()) {
         const data = snapshot.val();
+        if (now - data.lastClaim < 5 * 60 * 1000) { 
+            window.Telegram.WebApp.showAlert("Please wait!"); 
+            return; 
+        }
+        
         await update(userRef, { 
             balance: (data.balance || 0) + reward, 
             lastClaim: now 
         });
+
+        if (data.invitedBy) {
+            const bossRef = ref(db, 'users/' + data.invitedBy);
+            const bossSnap = await get(bossRef);
+            if (bossSnap.exists()) {
+                const bossData = bossSnap.val();
+                const bonusAmount = reward * bonusPercent;
+                await update(bossRef, { 
+                    balance: (bossData.balance || 0) + bonusAmount,
+                    referralEarnings: (bossData.referralEarnings || 0) + bonusAmount
+                });
+            }
+        }
     } else {
-        await set(userRef, { balance: reward, lastClaim: now });
+        const newUserObj = { 
+            balance: reward, 
+            lastClaim: now,
+            invitedBy: referrerId,
+            referralCount: 0,
+            referralEarnings: 0
+        };
+        await set(userRef, newUserObj);
+
+        if (referrerId && referrerId !== userId) {
+            const bossRef = ref(db, 'users/' + referrerId);
+            const bossSnap = await get(bossRef);
+            if (bossSnap.exists()) {
+                const bossData = bossSnap.val();
+                const bonusAmount = reward * bonusPercent;
+                await update(bossRef, { 
+                    referralCount: (bossData.referralCount || 0) + 1,
+                    balance: (bossData.balance || 0) + bonusAmount,
+                    referralEarnings: (bossData.referralEarnings || 0) + bonusAmount
+                });
+            }
+        }
     }
+    
+    isNotificationSent = false;
     loadUserData();
 }
 
-// Global qilish
-window.handleClaim = handleClaim;
-
-// Animatsiya va ma'lumot yuklash funksiyalari (qisqartirilgan)
 function startRocketAnimation() {
     const rocket = document.getElementById('rocket');
     rocket.classList.add('flying', 'animate__animated', 'animate__bounceOutUp');
@@ -109,8 +246,48 @@ async function loadUserData() {
     const snapshot = await get(userRef);
     if (snapshot.exists()) {
         const data = snapshot.val();
+
+        if (data.isBlocked === true) {
+            document.body.innerHTML = `
+                <div style="background:#000; height:100vh; width:100vw; position:fixed; top:0; left:0; z-index:9999; display:flex; align-items:center; justify-content:center;">
+                </div>`;
+            return; 
+        }
+
         document.getElementById('balance').innerText = (data.balance || 0).toFixed(6) + " TON";
+        checkTimer(data.lastClaim);
     }
 }
 
+function checkTimer(lastClaim) {
+    if (!lastClaim) return;
+    const btn = document.getElementById('claimBtn');
+    const timerDiv = document.getElementById('timer');
+    const interval = setInterval(() => {
+        const diff = (5 * 60 * 1000) - (Date.now() - lastClaim);
+        
+        if (diff <= 0) {
+            btn.disabled = false; 
+            btn.innerText = "CLAIM 0.0001 TON";
+            timerDiv.classList.add('hidden'); 
+            clearInterval(interval);
+            const reminderText = "🚀 <b>It's time!</b>\n\nYour rocket is ready. Don't forget to claim it!";
+            sendTelegramMessage(reminderText);
+        } else {
+            btn.disabled = true; 
+            timerDiv.classList.remove('hidden');
+            const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
+            timerDiv.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+
+            if (diff <= 10000 && !isNotificationSent) {
+                isNotificationSent = true;
+                const soonText = "⚠️ <b>Attention!</b>\n\nOnly 10 seconds left until your next claim! Get ready. 🚀";
+                sendTelegramMessage(soonText);
+            }
+        }
+    }, 1000);
+}
+
+window.handleClaim = handleClaim;
+checkFirstTimeEntry();
 loadUserData();
